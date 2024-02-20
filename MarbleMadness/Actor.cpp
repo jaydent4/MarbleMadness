@@ -30,7 +30,7 @@ void Player::doSomething()
 	{
 		switch (ch)
 		{
-		case KEY_PRESS_LEFT: moveTo(getX() - 1, getY()); break;
+		case KEY_PRESS_LEFT: std::cout << "LEFT"; moveTo(getX() - 1, getY()); break;
 		case KEY_PRESS_RIGHT: moveTo(getX() + 1, getY()); break;
 		case KEY_PRESS_DOWN: moveTo(getX(), getY() - 1); break;
 		case KEY_PRESS_UP: moveTo(getX(), getY() + 1); break;
@@ -38,6 +38,10 @@ void Player::doSomething()
 	}
 }
 
+int Player::getHP() const
+{
+	return m_hp;
+}
 
 // WALL IMPLEMENTATIONS
 Wall::Wall(int x, int y, StudentWorld* sWorld)
