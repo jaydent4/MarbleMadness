@@ -6,6 +6,7 @@
 #include "Actor.h"
 #include <string>
 #include <vector>
+#include <list>
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 
@@ -21,13 +22,14 @@ public:
   virtual int move();
   virtual void cleanUp();
 
+  // HELPER FUNCTIONS
+  Actor* findEntryAtPos(double x, double y);
 
 private:
-	std::vector<Actor*> actors;
+	std::list<Actor*> actors;
 	Player* avatar;
-	int m_numActors;
 	int m_bonus;
-	void getStatus(int score, int lev, int lives, int hp, int ammo, int bonus);
+	std::string getStatus(int score, int lev, int lives, int hp, int ammo, int bonus);
 	void setDisplayText();
 };
 
