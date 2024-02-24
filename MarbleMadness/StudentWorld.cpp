@@ -16,8 +16,7 @@ GameWorld* createStudentWorld(string assetPath)
 // PUBLIC
 StudentWorld::StudentWorld(string assetPath)
 : GameWorld(assetPath), m_bonus(1000)
-{
-}
+{}
 
 StudentWorld::~StudentWorld()
 {
@@ -26,23 +25,12 @@ StudentWorld::~StudentWorld()
 
 int StudentWorld::init()
 {
-    // GETTING LEVEL
-    // gets level file name
-    int lvl = getLevel();
-    string currlvl = "level";
-    if (lvl < 10)
-        currlvl += "0";
-    currlvl += (lvl + 48);
-    currlvl += ".txt";
-
-    // loads level
     Level lev(assetPath());
-    Level::LoadResult resultlvl = lev.loadLevel(currlvl);
-
-    // checks if level 
-    if (resultlvl == Level::load_fail_file_not_found || resultlvl == Level::load_fail_bad_format)
-        return -1;
-
+    int isLevelLoaded = loadCurrentLevel(lev);
+    if (isLevelLoaded == -1)
+        return GWSTATUS_LEVEL_ERROR;
+    if (isLevelLoaded == 0 || getLevel() == 99)
+        return GWSTATUS_PLAYER_WON;
     Level::MazeEntry atr;
     for (int xcoord = 0; xcoord < VIEW_WIDTH; xcoord++)
     {
@@ -68,6 +56,12 @@ int StudentWorld::init()
                 actors.push_back(nm);
                 break;
             }
+            case Level::pit:
+            {
+                Pit* np = new Pit(xcoord, ycoord, this);
+                actors.push_back(np);
+                break;
+            }
             }
         }
     }
@@ -81,10 +75,19 @@ int StudentWorld::move()
     avatar->doSomething();
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
     {
-        (*p)->doSomething();
+        // calls all actors doSomething()
+        (*p)->doSomething(); 
+        
+        // checks if player/avatar is alive
+        if (!(avatar->isAlive()))
+            return GWSTATUS_PLAYER_DIED;
+
+        /*
+        if completed level, return completed level
+        */
+        
     }
-    /*if (avatar->getHP() <= 0)
-        return GWSTATUS_PLAYER_DIED;*/
+    removeDeadEntries();
 	return GWSTATUS_CONTINUE_GAME;
 }
 
@@ -117,6 +120,11 @@ Actor* StudentWorld::findEntryAtPos(double x, double y)
             return (*p);
     }
     return nullptr;
+}
+
+void StudentWorld::addToActors(Actor* na)
+{
+    actors.push_back(na);
 }
 
 void StudentWorld::setDisplayText()
@@ -177,6 +185,58 @@ std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int a
     return status;
 }
 
+int StudentWorld::loadCurrentLevel(Level& lev)
+{
+    // GETTING LEVEL
+    // gets level file name
+    int lvl = getLevel();
+    string currlvl = "level";
+    if (lvl < 10)
+        currlvl += "0";
+    currlvl += (lvl + 48);
+    currlvl += ".txt";
 
+    // loads level
+    Level::LoadResult resultlvl = lev.loadLevel(currlvl);
 
+    // checks if level 
+    if (resultlvl == Level::load_fail_bad_format)
+        return -1;
+    else if (resultlvl == Level::load_fail_file_not_found)
+        return 0;
+    return 1;
+}
 
+Marble* StudentWorld::getMarbleAtPos(double x, double y)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y && dynamic_cast<Marble*>(*p) != nullptr)
+        {
+            return dynamic_cast<Marble*>(*p);
+        }
+    }
+    return nullptr;
+}
+
+bool StudentWorld::isEntryAlive(Actor* entry)
+{
+    return entry->isAlive();
+}
+
+void StudentWorld::removeDeadEntries()
+{
+    list<Actor*>::iterator p = actors.begin();
+    while (p != actors.end())
+    {
+        if (!isEntryAlive(*p))
+        {
+            delete (*p);
+            p = actors.erase(p);
+        }
+        else
+        {
+            p++;
+        }
+    }
+}

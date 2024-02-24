@@ -9,19 +9,31 @@ class StudentWorld;
 
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
+// CONSTANTS
+const int UNDAMAGEABLE = 999;
+const int PEA_DAMAGE = 2;
+
+
 // BASE CLASS
 class Actor : public GraphObject
 {
 public:
-	Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld);
+	Actor(int ID, int x, int y, int dir, int hp, bool visible, bool st, StudentWorld* sWorld);
 	StudentWorld* getWorld();
 	virtual void doSomething();
 	bool hasCollision();
 	bool isPushable(int dir);
+	bool isAlive();
+	bool canBeShot();
+	int getHP() const;
+	void changeHP(int nhp);
+	void damage();
+
 private:
 	StudentWorld* m_world;
 	bool collision;
-	bool pushable;
+	bool shot;
+	int m_hp;
 };
 
 
@@ -31,11 +43,9 @@ class Player : public Actor
 public:
 	Player(int x, int y, StudentWorld* sWorld);
 	virtual void doSomething();
-	int getHP() const;
 	int getPeas() const;
 private:
 	bool canMove(double x, double y);
-	int m_hp;
 	int m_peas;
 };
 
@@ -51,7 +61,24 @@ class Marble : public Actor
 public:
 	Marble(int x, int y, StudentWorld* sWorld);
 private:
-	int m_hp;
+};
+
+class Pit : public Actor
+{
+public:
+	Pit(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+
+};
+
+class Pea : public Actor
+{
+public:
+	Pea(int x, int y, int dir, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+	bool moveInDirection(Actor*& ety);
 };
 
 #endif // ACTOR_H_
