@@ -52,14 +52,23 @@ int StudentWorld::init()
             switch (atr)
             {
             case Level::player:
+            {
                 avatar = new Player(xcoord, ycoord, this);
                 break;
+            }
             case Level::wall:
+            {
                 Wall* nw = new Wall(xcoord, ycoord, this);
                 actors.push_back(nw);
                 break;
             }
-            // ADD OTHER ACTORS
+            case Level::marble:
+            {
+                Marble* nm = new Marble(xcoord, ycoord, this);
+                actors.push_back(nm);
+                break;
+            }
+            }
         }
     }
     return GWSTATUS_CONTINUE_GAME;

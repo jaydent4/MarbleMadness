@@ -4,7 +4,7 @@
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 
 // ACTOR IMPLEMENTATIONS
-Actor::Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld, Level::MazeEntry type)
+Actor::Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld)
 	: GraphObject(ID, x, y, dir), m_world(sWorld), collision(true)
 {
 	setVisible(visible);
@@ -22,9 +22,43 @@ bool Actor::hasCollision()
 	return collision;
 }
 
+bool Actor::isPushable(int dir)
+{
+	if (pushable)
+	{
+		Actor* entry = nullptr;
+		int x = getX();
+		int y = getY();
+		switch (dir)
+		{
+		case up:
+			y++;
+			break;
+		case down:
+			y--;
+			break;
+		case right:
+			x++;
+			break;
+		case left:
+			x--;
+			break;
+		}
+		entry = getWorld()->findEntryAtPos(x, y);
+
+		if (entry != nullptr && entry->hasCollision())
+		{
+			return false;
+		}
+		moveTo(x, y);
+		return true;
+	}
+	return false;
+}
+
 // PLAYER IMPLEMENTATIONS
 Player::Player(int x, int y, StudentWorld* sWorld)
-	: Actor(IID_PLAYER, x, y, right, true, sWorld, Level::player), m_hp(20), m_peas(20)
+	: Actor(IID_PLAYER, x, y, right, true, sWorld), m_hp(20), m_peas(20)
 {}
 
 void Player::doSomething()
@@ -38,32 +72,32 @@ void Player::doSomething()
 		switch (ch)
 		{
 		case KEY_PRESS_LEFT:
+			setDirection(left);
 			if (canMove(getX() - 1, getY()))
 			{
 				moveTo(getX() - 1, getY());
 			}
-			setDirection(left);
 			break;
 		case KEY_PRESS_RIGHT:
+			setDirection(right);
 			if (canMove(getX() + 1, getY()))
 			{
 				moveTo(getX() + 1, getY());
 			}
-			setDirection(right);
 			break;
 		case KEY_PRESS_DOWN:
+			setDirection(down);
 			if (canMove(getX(), getY() - 1))
 			{
 				moveTo(getX(), getY() - 1);
 			}
-			setDirection(down);
 			break;
 		case KEY_PRESS_UP:
+			setDirection(up);
 			if (canMove(getX(), getY() + 1))
 			{
 				moveTo(getX(), getY() + 1);
 			}
-			setDirection(up);
 			break;
 		}
 	}
@@ -72,10 +106,17 @@ void Player::doSomething()
 bool Player::canMove(double x, double y)
 {
 	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr || !(entry->hasCollision())) // nullptr is empty, if entry exists, check if it has collision
+	if (entry == nullptr)
 	{
-		if (true) // UPDATE FOR MARBLE
-			return true;
+		return true;
+	}
+
+	if (entry->hasCollision())
+	{
+		if (dynamic_cast<Marble*>(entry) != nullptr)
+		{
+			return entry->isPushable(getDirection());
+		}
 	}
 	return false;
 }
@@ -92,6 +133,10 @@ int Player::getPeas() const
 
 // WALL IMPLEMENTATIONS
 Wall::Wall(int x, int y, StudentWorld* sWorld)
-	: Actor(IID_WALL, x, y, none, true, sWorld, Level::wall)
+	: Actor(IID_WALL, x, y, none, true, sWorld)
 {}
 
+// MARBLE IMPLEMENTATIONS
+Marble::Marble(int x, int y, StudentWorld* sWorld)
+	: Actor(IID_MARBLE, x, y, none, true, sWorld), m_hp(10)
+{}

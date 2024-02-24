@@ -13,13 +13,15 @@ class StudentWorld;
 class Actor : public GraphObject
 {
 public:
-	Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld, Level::MazeEntry type);
+	Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld);
 	StudentWorld* getWorld();
 	virtual void doSomething();
 	bool hasCollision();
+	bool isPushable(int dir);
 private:
 	StudentWorld* m_world;
 	bool collision;
+	bool pushable;
 };
 
 
@@ -44,5 +46,12 @@ public:
 private:
 };
 
+class Marble : public Actor
+{
+public:
+	Marble(int x, int y, StudentWorld* sWorld);
+private:
+	int m_hp;
+};
 
 #endif // ACTOR_H_
