@@ -9,15 +9,36 @@ class StudentWorld;
 
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
+// CONSTANTS
+const int UNDAMAGEABLE = 999;
+const int PEA_DAMAGE = 2;
+const int CRYSTAL_POINTS = 50;
+const int EXTRALIFE_POINTS = 1000;
+const int RESTOREHEALTH_POINTS = 500;
+const int AMMO_POINTS = 100;
+const int FINISH_POINTS = 2000;
+
+
 // BASE CLASS
 class Actor : public GraphObject
 {
 public:
-	Actor(int ID, int x, int y, int dir, bool visible, StudentWorld* sWorld);
+	Actor(int ID, int x, int y, int dir, int hp, StudentWorld* sWorld);
 	StudentWorld* getWorld();
 	virtual void doSomething();
 	bool hasCollision();
 	bool isPushable(int dir);
+	bool isAlive();
+	bool canBeShot();
+	int getHP() const;
+	void changeHP(int nhp);
+	void damage();
+	virtual bool canMove(double x, double y);
+
+
+	// HELPER FUNCTIONS
+	void changeCollision(bool c);
+	void changeCanBeShot(bool s);
 private:
 	StudentWorld* m_world;
 	bool collision;
@@ -26,6 +47,7 @@ private:
 
 
 // DERIVED CLASSES
+
 class Player : public Actor
 {
 public:
@@ -33,9 +55,9 @@ public:
 	virtual void doSomething();
 	int getHP() const;
 	int getPeas() const;
+	void addPeas(int p);
 private:
-	bool canMove(double x, double y);
-	int m_hp;
+	virtual bool canMove(double x, double y);
 	int m_peas;
 };
 
@@ -52,6 +74,53 @@ public:
 	Marble(int x, int y, StudentWorld* sWorld);
 private:
 	int m_hp;
+};
+
+// COLLECTIBLE CLASSES
+class Collectible : public Actor
+{
+public:
+	Collectible(int ID, int x, int y, int points, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+	int m_points;
+};
+
+class Crystal : public Collectible
+{
+public:
+	Crystal(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+};
+
+class ExtraLifeGoodie : public Collectible
+{
+public:
+	ExtraLifeGoodie(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+};
+
+class RestoreHealthGoodie : public Collectible
+{
+public:
+	RestoreHealthGoodie(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+};
+
+class AmmoGoodie : public Collectible
+{
+public:
+	AmmoGoodie(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+};
+
+class Exit : public Collectible
+{
+public:
+	Exit(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+	bool revealed;
 };
 
 #endif // ACTOR_H_

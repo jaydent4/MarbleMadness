@@ -15,9 +15,8 @@ GameWorld* createStudentWorld(string assetPath)
 
 // PUBLIC
 StudentWorld::StudentWorld(string assetPath)
-: GameWorld(assetPath), m_bonus(1000)
-{
-}
+: GameWorld(assetPath), m_bonus(1000), m_numCrystals(0)
+{}
 
 StudentWorld::~StudentWorld()
 {
@@ -44,6 +43,7 @@ int StudentWorld::init()
         return -1;
 
     Level::MazeEntry atr;
+    levelCompleted = false;
     for (int xcoord = 0; xcoord < VIEW_WIDTH; xcoord++)
     {
         for (int ycoord = 0; ycoord < VIEW_WIDTH; ycoord++)
@@ -68,6 +68,43 @@ int StudentWorld::init()
                 actors.push_back(nm);
                 break;
             }
+            case Level::pit:
+            {
+                Pit* np = new Pit(xcoord, ycoord, this);
+                actors.push_back(np);
+                break;
+            }
+            case Level::crystal:
+            {
+                Crystal* nc = new Crystal(xcoord, ycoord, this);
+                actors.push_back(nc);
+                m_numCrystals++;
+                break;
+            }
+            case Level::extra_life:
+            {
+                ExtraLifeGoodie* nelg = new ExtraLifeGoodie(xcoord, ycoord, this);
+                actors.push_back(nelg);
+                break;
+            }
+            case Level::restore_health:
+            {
+                RestoreHealthGoodie* nrhg = new RestoreHealthGoodie(xcoord, ycoord, this);
+                actors.push_back(nrhg);
+                break;
+            }
+            case Level::ammo:
+            {
+                AmmoGoodie* nag = new AmmoGoodie(xcoord, ycoord, this);
+                actors.push_back(nag);
+                break;
+            }
+            case Level::exit:
+            {
+                Exit* ne = new Exit(xcoord, ycoord, this);
+                actors.push_back(ne);
+                break;
+            }
             }
         }
     }
@@ -81,10 +118,24 @@ int StudentWorld::move()
     avatar->doSomething();
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
     {
-        (*p)->doSomething();
+        // calls all actors doSomething()
+        (*p)->doSomething(); 
+        
+        // checks if player/avatar is alive
+        if (!(avatar->isAlive()))
+            return GWSTATUS_PLAYER_DIED;
+
+        // check if the player completed
+        if (levelCompleted)
+            return GWSTATUS_FINISHED_LEVEL;
     }
-    /*if (avatar->getHP() <= 0)
-        return GWSTATUS_PLAYER_DIED;*/
+    removeDeadEntries();
+
+    decreaseBonus();
+
+    if (levelCompleted)
+        return GWSTATUS_FINISHED_LEVEL;
+
 	return GWSTATUS_CONTINUE_GAME;
 }
 
@@ -117,6 +168,44 @@ Actor* StudentWorld::findEntryAtPos(double x, double y)
             return (*p);
     }
     return nullptr;
+}
+
+void StudentWorld::addToActors(Actor* na)
+{
+    actors.push_back(na);
+}
+
+Player* StudentWorld::getPlayer() const
+{
+    return avatar;
+}
+
+void StudentWorld::decreaseNumCrystals()
+{
+    m_numCrystals--;
+}
+
+bool StudentWorld::noMoreCrystals()
+{
+    return (m_numCrystals <= 0);
+}
+
+int StudentWorld::getBonus() const
+{
+    return m_bonus;
+}
+
+void StudentWorld::completeLevel()
+{
+    levelCompleted = true;
+}
+
+void StudentWorld::decreaseBonus()
+{
+    if (m_bonus != 0)
+    {
+        m_bonus--;
+    }
 }
 
 void StudentWorld::setDisplayText()
@@ -179,4 +268,13 @@ std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int a
 
 
 
+bool StudentWorld::isPlayerAt(double x, double y)
+{
+    return (avatar->getX() == x && avatar->getY() == y);
+}
+
+bool StudentWorld::isEntryAlive(Actor* entry)
+{
+    return entry->isAlive();
+}
 
