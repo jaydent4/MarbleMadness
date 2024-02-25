@@ -24,27 +24,25 @@ bool Actor::hasCollision()
 
 bool Actor::isPushable(int dir)
 {
-	if (pushable)
+	Actor* entry = nullptr;
+	double x = getX();
+	double y = getY();
+	switch (dir)
 	{
-		Actor* entry = nullptr;
-		int x = getX();
-		int y = getY();
-		switch (dir)
-		{
-		case up:
-			y++;
-			break;
-		case down:
-			y--;
-			break;
-		case right:
-			x++;
-			break;
-		case left:
-			x--;
-			break;
-		}
-		entry = getWorld()->findEntryAtPos(x, y);
+	case up:
+		y++;
+		break;
+	case down:
+		y--;
+		break;
+	case right:
+		x++;
+		break;
+	case left:
+		x--;
+		break;
+	}
+	entry = getWorld()->findEntryAtPos(static_cast<int>(x), static_cast<int>(y));
 
 	if (entry == nullptr || dynamic_cast<Pit*>(entry) != nullptr)
 	{
@@ -52,7 +50,6 @@ bool Actor::isPushable(int dir)
 		return true;
 	}
 	return false;
-
 }
 
 bool Actor::isAlive()
@@ -61,7 +58,7 @@ bool Actor::isAlive()
 }
 
 int Actor::getHP() const
-{ 
+{
 	return m_hp;
 }
 
@@ -110,7 +107,7 @@ Player::Player(int x, int y, StudentWorld* sWorld)
 
 void Player::doSomething()
 {
-	if (m_hp <= 0) // player is dead
+	if (!isAlive()) // player is dead
 		return;
 
 	int ch;
@@ -184,11 +181,6 @@ bool Player::canMove(double x, double y)
 	{
 		return true;
 	}
-}
-
-int Player::getHP() const
-{
-	return m_hp;
 }
 
 int Player::getPeas() const

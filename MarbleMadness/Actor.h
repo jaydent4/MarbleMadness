@@ -42,7 +42,8 @@ public:
 private:
 	StudentWorld* m_world;
 	bool collision;
-	bool pushable;
+	bool shot;
+	int m_hp;
 };
 
 
@@ -53,7 +54,6 @@ class Player : public Actor
 public:
 	Player(int x, int y, StudentWorld* sWorld);
 	virtual void doSomething();
-	int getHP() const;
 	int getPeas() const;
 	void addPeas(int p);
 private:
@@ -74,6 +74,23 @@ public:
 	Marble(int x, int y, StudentWorld* sWorld);
 private:
 	int m_hp;
+};
+
+class Pit : public Actor
+{
+public:
+	Pit(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+};
+
+class Pea : public Actor
+{
+public:
+	Pea(int x, int y, int dir, StudentWorld* sWorld);
+	virtual void doSomething();
+private:
+	bool moveInDirection(Actor*& ety);
 };
 
 // COLLECTIBLE CLASSES

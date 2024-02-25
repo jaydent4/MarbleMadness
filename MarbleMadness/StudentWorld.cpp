@@ -8,14 +8,14 @@ using namespace std;
 
 GameWorld* createStudentWorld(string assetPath)
 {
-	return new StudentWorld(assetPath);
+    return new StudentWorld(assetPath);
 }
 
 // Students:  Add code to this file, StudentWorld.h, Actor.h, and Actor.cpp
 
 // PUBLIC
-StudentWorld::StudentWorld(string assetPath)
-: GameWorld(assetPath), m_bonus(1000), m_numCrystals(0)
+StudentWorld::StudentWorld(std::string assetPath)
+    : GameWorld(assetPath), m_bonus(1000), m_numCrystals(0)
 {}
 
 StudentWorld::~StudentWorld()
@@ -25,25 +25,15 @@ StudentWorld::~StudentWorld()
 
 int StudentWorld::init()
 {
-    // GETTING LEVEL
-    // gets level file name
-    int lvl = getLevel();
-    string currlvl = "level";
-    if (lvl < 10)
-        currlvl += "0";
-    currlvl += (lvl + 48);
-    currlvl += ".txt";
-
-    // loads level
     Level lev(assetPath());
-    Level::LoadResult resultlvl = lev.loadLevel(currlvl);
+    int isLevelLoaded = loadCurrentLevel(lev);
+    if (isLevelLoaded == -1)
+        return GWSTATUS_LEVEL_ERROR;
+    if (isLevelLoaded == 0 || getLevel() == 99)
+        return GWSTATUS_PLAYER_WON;
 
-    // checks if level 
-    if (resultlvl == Level::load_fail_file_not_found || resultlvl == Level::load_fail_bad_format)
-        return -1;
-
-    Level::MazeEntry atr;
     levelCompleted = false;
+    Level::MazeEntry atr;
     for (int xcoord = 0; xcoord < VIEW_WIDTH; xcoord++)
     {
         for (int ycoord = 0; ycoord < VIEW_WIDTH; ycoord++)
@@ -119,8 +109,8 @@ int StudentWorld::move()
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
     {
         // calls all actors doSomething()
-        (*p)->doSomething(); 
-        
+        (*p)->doSomething();
+
         // checks if player/avatar is alive
         if (!(avatar->isAlive()))
             return GWSTATUS_PLAYER_DIED;
@@ -136,7 +126,7 @@ int StudentWorld::move()
     if (levelCompleted)
         return GWSTATUS_FINISHED_LEVEL;
 
-	return GWSTATUS_CONTINUE_GAME;
+    return GWSTATUS_CONTINUE_GAME;
 }
 
 void StudentWorld::cleanUp()
@@ -166,6 +156,18 @@ Actor* StudentWorld::findEntryAtPos(double x, double y)
     {
         if ((*p)->getX() == x && (*p)->getY() == y)
             return (*p);
+    }
+    return nullptr;
+}
+
+Marble* StudentWorld::getMarbleAtPos(double x, double y)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y && dynamic_cast<Marble*>(*p) != nullptr)
+        {
+            return dynamic_cast<Marble*>(*p);
+        }
     }
     return nullptr;
 }
@@ -223,7 +225,7 @@ void StudentWorld::setDisplayText()
 
 std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int ammo, int bonus)
 {
-    
+
     std::string status = "";
 
     for (int i = 1; i < 7; i++)
@@ -266,11 +268,26 @@ std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int a
     return status;
 }
 
-
-
-bool StudentWorld::isPlayerAt(double x, double y)
+int StudentWorld::loadCurrentLevel(Level& lev)
 {
-    return (avatar->getX() == x && avatar->getY() == y);
+    // GETTING LEVEL
+    // gets level file name
+    int lvl = getLevel();
+    string currlvl = "level";
+    if (lvl < 10)
+        currlvl += "0";
+    currlvl += (lvl + 48);
+    currlvl += ".txt";
+
+    // loads level
+    Level::LoadResult resultlvl = lev.loadLevel(currlvl);
+
+    // checks if level 
+    if (resultlvl == Level::load_fail_bad_format)
+        return -1;
+    else if (resultlvl == Level::load_fail_file_not_found)
+        return 0;
+    return 1;
 }
 
 bool StudentWorld::isEntryAlive(Actor* entry)
@@ -278,3 +295,24 @@ bool StudentWorld::isEntryAlive(Actor* entry)
     return entry->isAlive();
 }
 
+bool StudentWorld::isPlayerAt(double x, double y)
+{
+    return (avatar->getX() == x && avatar->getY() == y);
+}
+
+void StudentWorld::removeDeadEntries()
+{
+    list<Actor*>::iterator p = actors.begin();
+    while (p != actors.end())
+    {
+        if (!isEntryAlive(*p))
+        {
+            delete (*p);
+            p = actors.erase(p);
+        }
+        else
+        {
+            p++;
+        }
+    }
+}
