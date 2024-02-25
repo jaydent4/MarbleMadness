@@ -279,9 +279,16 @@ Collectible::Collectible(int ID, int x, int y, int points, StudentWorld* sWorld)
 
 void Collectible::doSomething()
 {
-	getWorld()->increaseScore(m_points);
-	getWorld()->playSound(SOUND_GOT_GOODIE);
-	changeHP(0);
+	if (isAlive())
+	{
+		if (getWorld()->isPlayerAt(getX(), getY()))
+		{
+			getWorld()->increaseScore(m_points);
+			getWorld()->playSound(SOUND_GOT_GOODIE);
+			doActivity();
+			changeHP(0);
+		}
+	}
 }
 
 
@@ -290,16 +297,9 @@ Crystal::Crystal(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_CRYSTAL, x, y, CRYSTAL_POINTS, sWorld)
 {}
 
-void Crystal::doSomething()
+void Crystal::doActivity()
 {
-	if (isAlive())
-	{
-		if (getWorld()->isPlayerAt(getX(), getY()))
-		{
-			Collectible::doSomething();
-			getWorld()->decreaseNumCrystals();
-		}
-	}
+	getWorld()->decreaseNumCrystals();
 }
 
 // EXTRALIFEGOODIE IMPLEMENTATION
@@ -307,16 +307,9 @@ ExtraLifeGoodie::ExtraLifeGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_EXTRA_LIFE, x, y, EXTRALIFE_POINTS, sWorld)
 {}
 
-void ExtraLifeGoodie::doSomething()
+void ExtraLifeGoodie::doActivity()
 {
-	if (isAlive())
-	{
-		if (getWorld()->isPlayerAt(getX(), getY()))
-		{
-			Collectible::doSomething();
-			getWorld()->incLives();
-		}
-	}
+	getWorld()->incLives();
 }
 
 // RESTOREHEALTHGOODIE IMPLEMENTATION
@@ -324,16 +317,9 @@ RestoreHealthGoodie::RestoreHealthGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_RESTORE_HEALTH, x, y, RESTOREHEALTH_POINTS, sWorld)
 {}
 
-void RestoreHealthGoodie::doSomething()
+void RestoreHealthGoodie::doActivity()
 {
-	if (isAlive())
-	{
-		if (getWorld()->isPlayerAt(getX(), getY()))
-		{
-			Collectible::doSomething();
-			getWorld()->getPlayer()->changeHP(20);
-		}
-	}
+	getWorld()->getPlayer()->changeHP(20);
 }
 
 // AMMOGOODIE IMPLEMENTATION
@@ -341,16 +327,9 @@ AmmoGoodie::AmmoGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_AMMO, x, y, AMMO_POINTS, sWorld)
 {}
 
-void AmmoGoodie::doSomething()
+void AmmoGoodie::doActivity()
 {
-	if (isAlive())
-	{
-		if (getWorld()->isPlayerAt(getX(), getY()))
-		{
-			Collectible::doSomething();
-			getWorld()->getPlayer()->addPeas(20);
-		}
-	}
+	getWorld()->getPlayer()->addPeas(20);
 }
 
 // EXIT IMPLEMENTATION
@@ -382,3 +361,6 @@ void Exit::doSomething()
 		}
 	}
 }
+
+void Exit::doActivity() // Exit does not use doActivity
+{}

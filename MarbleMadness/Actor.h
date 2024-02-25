@@ -99,6 +99,7 @@ class Collectible : public Actor
 public:
 	Collectible(int ID, int x, int y, int points, StudentWorld* sWorld);
 	virtual void doSomething();
+	virtual void doActivity() = 0;
 private:
 	int m_points;
 };
@@ -107,28 +108,28 @@ class Crystal : public Collectible
 {
 public:
 	Crystal(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doActivity();
 };
 
 class ExtraLifeGoodie : public Collectible
 {
 public:
 	ExtraLifeGoodie(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doActivity();
 };
 
 class RestoreHealthGoodie : public Collectible
 {
 public:
 	RestoreHealthGoodie(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doActivity();
 };
 
 class AmmoGoodie : public Collectible
 {
 public:
 	AmmoGoodie(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doActivity();
 };
 
 class Exit : public Collectible
@@ -136,6 +137,7 @@ class Exit : public Collectible
 public:
 	Exit(int x, int y, StudentWorld* sWorld);
 	virtual void doSomething();
+	virtual void doActivity();
 private:
 	bool revealed;
 };
