@@ -17,6 +17,7 @@ const int EXTRALIFE_POINTS = 1000;
 const int RESTOREHEALTH_POINTS = 500;
 const int AMMO_POINTS = 100;
 const int FINISH_POINTS = 2000;
+const int RAGEBOT_POINTS = 100;
 
 
 // BASE CLASS
@@ -32,7 +33,7 @@ public:
 	bool canBeShot();
 	int getHP() const;
 	void changeHP(int nhp);
-	void damage();
+	virtual void damage();
 	virtual bool canMove(double x, double y);
 
 
@@ -73,7 +74,6 @@ class Marble : public Actor
 public:
 	Marble(int x, int y, StudentWorld* sWorld);
 private:
-	int m_hp;
 };
 
 class Pit : public Actor
@@ -140,6 +140,28 @@ public:
 	virtual void doActivity();
 private:
 	bool revealed;
+};
+
+// ROBOT CLASSES
+class Robot : public Actor
+{
+public:
+	Robot(int ID, int x, int y, int hp, int dir, StudentWorld* sWorld);
+	void doSomething();
+	bool canAct();
+	virtual void robotMove();
+	virtual void movementPattern() = 0;
+	virtual void damage();
+private:
+	int m_currTick;
+};
+
+class RageBot : public Robot
+{
+public:
+	RageBot(int x, int y, int dir, StudentWorld* sWorld);
+	virtual void doSomething();
+	virtual void movementPattern();
 };
 
 #endif // ACTOR_H_

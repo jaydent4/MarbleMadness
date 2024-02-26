@@ -98,8 +98,6 @@ bool Actor::canMove(double x, double y)
 	return false;
 }
 
-
-
 // PLAYER IMPLEMENTATIONS
 Player::Player(int x, int y, StudentWorld* sWorld)
 	: Actor(IID_PLAYER, x, y, right, 20, sWorld), m_peas(20)
@@ -160,12 +158,12 @@ void Player::doSomething()
 
 bool Player::canMove(double x, double y)
 {
-	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr)
+	if (Actor::canMove(x, y))
 	{
 		return true;
 	}
 
+	Actor* entry = getWorld()->findEntryAtPos(x, y);
 	if (entry->hasCollision())
 	{
 		if (dynamic_cast<Marble*>(entry) != nullptr && entry->isPushable(getDirection()))
@@ -259,13 +257,15 @@ bool Pea::moveInDirection(Actor*& ety)
 	}
 
 	// check if pea goes through or stops at an entry/actor
+	moveTo(x, y);
 	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr || !(entry->canBeShot()))
+	if (entry == nullptr || (!(entry->canBeShot()) && !getWorld()->isPlayerAt(x, y)))
 	{
-		moveTo(x, y);
 		return true;
 	}
 	ety = entry;
+	if (getWorld()->isPlayerAt(x, y))
+		ety = getWorld()->getPlayer();
 	return false;
 }
 
@@ -368,9 +368,107 @@ void Exit::doActivity() // Exit does not use doActivity
 // ROBOT IMPLEMENTATIONS
 Robot::Robot(int ID, int x, int y, int hp, int dir, StudentWorld* sWorld)
 	: Actor(ID, x, y, dir, hp, sWorld)
-{}
+{	
+	m_currTick = 1;
+}
 
 void Robot::doSomething()
 {
 
+}
+
+bool Robot::canAct()
+{
+	int tickFreq = (28 - (getWorld()->getLevel())) / 4; // tick frequency
+	if (tickFreq < 3) // 3 is fastest rate
+		tickFreq = 3; 
+
+	if (m_currTick == tickFreq)
+	{
+		m_currTick = 1;
+		return true;
+	}
+	else
+	{
+		m_currTick++;
+		return false;
+	}
+}
+
+void Robot::robotMove()
+{
+	int dir = getDirection();
+	double x = getX();
+	double y = getY();
+	double dx = 0;
+	double dy = 0;
+
+	switch (dir)
+	{
+	case right: dx++; break;
+	case left: dx--; break;
+	case up: dy++; break;
+	case down: dy--; break;
+	}
+
+	Actor* entry = getWorld()->findEntryAtPos(x + dx, y + dy);
+	if (entry != nullptr && entry->hasCollision())
+	{
+		movementPattern();
+	}
+	else
+	{
+		moveTo(x + dx, y + dy);
+	}
+}
+
+void Robot::damage()
+{
+	Actor::damage();
+	if (isAlive())
+	{
+		getWorld()->playSound(SOUND_ROBOT_IMPACT);
+	}
+	else
+	{
+		getWorld()->playSound(SOUND_ROBOT_DIE);
+		getWorld()->increaseScore(RAGEBOT_POINTS);
+	}
+}
+
+// RAGEBOT IMPLEMENTATION
+RageBot::RageBot(int x, int y, int dir, StudentWorld* sWorld)
+	: Robot(IID_RAGEBOT, x, y, 10, dir, sWorld)
+{}
+
+void RageBot::doSomething()
+{
+	if (isAlive())
+	{
+		if (canAct())
+		{
+			if (getWorld()->clearShotToPlayerExists(getX(), getY(), getDirection()))
+			{
+				getWorld()->playSound(SOUND_ENEMY_FIRE);
+				Pea* np = new Pea(static_cast<int>(getX()), static_cast<int>(getY()), getDirection(), getWorld());
+				getWorld()->addToActors(np);
+			}
+			else
+			{
+				robotMove();
+			}
+		}
+	}
+}
+
+void RageBot::movementPattern()
+{
+	int dir = getDirection();
+	switch (dir)
+	{
+	case up: setDirection(down); break;
+	case down: setDirection(up); break;
+	case right: setDirection(left); break;
+	case left: setDirection(right); break;
+	}
 }

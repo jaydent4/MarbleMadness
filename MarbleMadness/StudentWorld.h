@@ -10,6 +10,12 @@
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 
+// CONSTANTS
+static const int RIGHT = 0;
+static const int LEFT = 180;
+static const int UP = 90;
+static const int DOWN = 270;
+
 class Actor;
 class Marble;
 class Player;
@@ -34,6 +40,7 @@ public:
 	bool isPlayerAt(double x, double y);
 	void completeLevel();
 	void decreaseBonus();
+	bool clearShotToPlayerExists(double ix, double iy, int dir);
 
 private:
 	std::list<Actor*> actors;

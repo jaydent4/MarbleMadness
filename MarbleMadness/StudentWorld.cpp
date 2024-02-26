@@ -1,5 +1,5 @@
 #include "StudentWorld.h"
-#include "GameConstants.h"
+#include "GameWorld.h"
 #include "Level.h"
 #include <string>
 #include <sstream>
@@ -33,6 +33,7 @@ int StudentWorld::init()
         return GWSTATUS_PLAYER_WON;
 
     levelCompleted = false;
+    m_bonus = 1000;
     Level::MazeEntry atr;
     for (int xcoord = 0; xcoord < VIEW_WIDTH; xcoord++)
     {
@@ -95,6 +96,19 @@ int StudentWorld::init()
                 actors.push_back(ne);
                 break;
             }
+            case Level::horiz_ragebot:
+            {
+                std::cout << "CREATED HORIZ RAGEBOT";
+                RageBot* nhrb = new RageBot(xcoord, ycoord, RIGHT, this);
+                actors.push_back(nhrb);
+                break;
+            }
+            case Level::vert_ragebot:
+            {
+                RageBot* nvrb = new RageBot(xcoord, ycoord, UP, this);
+                actors.push_back(nvrb);
+                break;
+            }
             }
         }
     }
@@ -124,7 +138,9 @@ int StudentWorld::move()
     decreaseBonus();
 
     if (levelCompleted)
+    {
         return GWSTATUS_FINISHED_LEVEL;
+    }
 
     return GWSTATUS_CONTINUE_GAME;
 }
@@ -208,6 +224,34 @@ void StudentWorld::decreaseBonus()
     {
         m_bonus--;
     }
+}
+
+bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
+{
+    double dx = 0;
+    double dy = 0;
+
+    switch (dir)
+    {
+    case RIGHT: dx++; break;
+    case LEFT: dx--; break;
+    case UP: dy++; break;
+    case DOWN: dy--; break;
+    }
+    
+
+    while ((findEntryAtPos(ix+dx, iy+dy) == nullptr || !findEntryAtPos(ix+dx, iy+dy)->canBeShot()) && !isPlayerAt(ix + dx, iy + dy))
+    {
+
+        switch (dir)
+        {
+        case RIGHT: dx++; break;
+        case LEFT: dx--; break;
+        case UP: dy++; break;
+        case DOWN: dy--; break;
+        }
+    }
+    return isPlayerAt(ix + dx, iy + dy);
 }
 
 void StudentWorld::setDisplayText()
