@@ -364,3 +364,13 @@ void Exit::doSomething()
 
 void Exit::doActivity() // Exit does not use doActivity
 {}
+
+// ROBOT IMPLEMENTATIONS
+Robot::Robot(int ID, int x, int y, int hp, int dir, StudentWorld* sWorld)
+	: Actor(ID, x, y, dir, hp, sWorld)
+{}
+
+void Robot::doSomething()
+{
+
+}
