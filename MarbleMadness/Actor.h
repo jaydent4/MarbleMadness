@@ -17,7 +17,11 @@ const int EXTRALIFE_POINTS = 1000;
 const int RESTOREHEALTH_POINTS = 500;
 const int AMMO_POINTS = 100;
 const int FINISH_POINTS = 2000;
+
+const int RAGEBOT_HP = 10;
 const int RAGEBOT_POINTS = 100;
+const int THIEFBOT_HP = 5;
+const int THIEFBOT_POINTS = 10;
 
 
 // BASE CLASS
@@ -35,6 +39,12 @@ public:
 	void changeHP(int nhp);
 	virtual void damage();
 	virtual bool canMove(double x, double y);
+	virtual bool canBeTaken();
+	Actor* steal();
+	virtual bool isStolen();
+	void changeCanBeTaken(bool t);
+	bool isPartOfFactoryCensus();
+	void changeFactoryCensus(bool fc);
 
 
 	// HELPER FUNCTIONS
@@ -44,6 +54,9 @@ private:
 	StudentWorld* m_world;
 	bool collision;
 	bool shot;
+	bool taken;
+	bool stolen;
+	bool factoryCensus;
 	int m_hp;
 };
 
@@ -93,6 +106,18 @@ private:
 	bool moveInDirection(Actor*& ety);
 };
 
+class ThiefBotFactory : public Actor
+{
+public:
+	enum ProductType { REGULAR, MEAN };
+	ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld);
+	void doSomething();
+private:
+	bool census();
+	ProductType getType() const;
+	ProductType m_tbType;
+};
+
 // COLLECTIBLE CLASSES
 class Collectible : public Actor
 {
@@ -102,6 +127,7 @@ public:
 	virtual void doActivity() = 0;
 private:
 	int m_points;
+	bool stolen;
 };
 
 class Crystal : public Collectible
@@ -146,7 +172,7 @@ private:
 class Robot : public Actor
 {
 public:
-	Robot(int ID, int x, int y, int hp, int dir, StudentWorld* sWorld);
+	Robot(int ID, int x, int y, int hp, int dir, int points, StudentWorld* sWorld);
 	void doSomething();
 	bool canAct();
 	virtual void robotMove();
@@ -154,6 +180,7 @@ public:
 	virtual void damage();
 private:
 	int m_currTick;
+	int m_points;
 };
 
 class RageBot : public Robot
@@ -162,6 +189,31 @@ public:
 	RageBot(int x, int y, int dir, StudentWorld* sWorld);
 	virtual void doSomething();
 	virtual void movementPattern();
+};
+
+class ThiefBot : public Robot
+{
+public:
+	ThiefBot(int ID, int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
+	virtual void doActivity();
+	virtual void robotMove();
+	virtual void movementPattern();
+	bool isHoldingItem();
+	bool readyToTurn();
+	virtual bool tryToSteal();
+	virtual void damage();
+private:
+	Actor* stolenItem;
+	int m_distanceBeforeTurn;
+	int m_currDistTraveled;
+};
+
+class RegularThiefBot : public ThiefBot
+{
+public:
+	RegularThiefBot(int x, int y, StudentWorld* sWorld);
+	virtual void doSomething();
 };
 
 #endif // ACTOR_H_

@@ -31,6 +31,7 @@ public:
 
 	// HELPER FUNCTIONS
 	Actor* findEntryAtPos(double x, double y);
+	Actor* getThiefBotAtPos(double x, double y);
 	Marble* getMarbleAtPos(double x, double y);
 	void addToActors(Actor* na);
 	Player* getPlayer() const;

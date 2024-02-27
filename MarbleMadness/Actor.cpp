@@ -5,7 +5,7 @@
 
 // ACTOR IMPLEMENTATIONS
 Actor::Actor(int ID, int x, int y, int dir, int hp, StudentWorld* sWorld)
-	: GraphObject(ID, x, y, dir), m_world(sWorld), collision(true), m_hp(hp), shot(true)
+	: GraphObject(ID, x, y, dir), m_world(sWorld), collision(true), m_hp(hp), shot(true), taken(false), stolen(false), factoryCensus(false)
 {
 	setVisible(true);
 }
@@ -67,6 +67,16 @@ void Actor::changeHP(int nhp)
 	m_hp = nhp;
 }
 
+bool Actor::canBeTaken()
+{
+	return taken;
+}
+
+void Actor::changeCanBeTaken(bool t)
+{
+	taken = t;
+}
+
 void Actor::damage()
 {
 	if (m_hp != UNDAMAGEABLE)
@@ -91,11 +101,37 @@ void Actor::changeCanBeShot(bool s)
 bool Actor::canMove(double x, double y)
 {
 	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr)
+	if (entry != nullptr && entry->hasCollision() || getWorld()->isPlayerAt(x,y))
 	{
-		return true;
+		return false;
 	}
-	return false;
+	return true;
+}
+
+Actor* Actor::steal()
+{
+	if (canBeTaken())
+	{
+		stolen = true;
+		setVisible(false);
+		return this;
+	}
+	return nullptr;
+}
+
+bool Actor::isStolen()
+{
+	return stolen;
+}
+
+bool Actor::isPartOfFactoryCensus()
+{
+	return factoryCensus;
+}
+
+void Actor::changeFactoryCensus(bool fc)
+{
+	factoryCensus = fc;
 }
 
 // PLAYER IMPLEMENTATIONS
@@ -258,6 +294,7 @@ bool Pea::moveInDirection(Actor*& ety)
 
 	// check if pea goes through or stops at an entry/actor
 	moveTo(x, y);
+	// CREATE FIND DAMAGEABLE ENTRY
 	Actor* entry = getWorld()->findEntryAtPos(x, y);
 	if (entry == nullptr || (!(entry->canBeShot()) && !getWorld()->isPlayerAt(x, y)))
 	{
@@ -275,13 +312,14 @@ Collectible::Collectible(int ID, int x, int y, int points, StudentWorld* sWorld)
 {
 	changeCollision(false);
 	changeCanBeShot(false);
+	changeCanBeTaken(true);
 }
 
 void Collectible::doSomething()
 {
 	if (isAlive())
 	{
-		if (getWorld()->isPlayerAt(getX(), getY()))
+		if (getWorld()->isPlayerAt(getX(), getY()) && !isStolen())
 		{
 			getWorld()->increaseScore(m_points);
 			getWorld()->playSound(SOUND_GOT_GOODIE);
@@ -290,7 +328,6 @@ void Collectible::doSomething()
 		}
 	}
 }
-
 
 // CRYSTAL IMPLEMENTATION
 Crystal::Crystal(int x, int y, StudentWorld* sWorld)
@@ -337,6 +374,7 @@ Exit::Exit(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_EXIT, x, y, FINISH_POINTS, sWorld), revealed(false)
 {
 	setVisible(false);
+	changeCanBeTaken(false);
 }
 
 void Exit::doSomething()
@@ -366,10 +404,11 @@ void Exit::doActivity() // Exit does not use doActivity
 {}
 
 // ROBOT IMPLEMENTATIONS
-Robot::Robot(int ID, int x, int y, int hp, int dir, StudentWorld* sWorld)
+Robot::Robot(int ID, int x, int y, int hp, int dir, int points, StudentWorld* sWorld)
 	: Actor(ID, x, y, dir, hp, sWorld)
 {	
 	m_currTick = 1;
+	m_points = points;
 }
 
 void Robot::doSomething()
@@ -432,13 +471,13 @@ void Robot::damage()
 	else
 	{
 		getWorld()->playSound(SOUND_ROBOT_DIE);
-		getWorld()->increaseScore(RAGEBOT_POINTS);
+		getWorld()->increaseScore(m_points);
 	}
 }
 
 // RAGEBOT IMPLEMENTATION
 RageBot::RageBot(int x, int y, int dir, StudentWorld* sWorld)
-	: Robot(IID_RAGEBOT, x, y, 10, dir, sWorld)
+	: Robot(IID_RAGEBOT, x, y, RAGEBOT_HP, dir, RAGEBOT_POINTS, sWorld)
 {}
 
 void RageBot::doSomething()
@@ -472,3 +511,221 @@ void RageBot::movementPattern()
 	case left: setDirection(right); break;
 	}
 }
+
+// THIEFBOT IMPLEMENTATION
+ThiefBot::ThiefBot(int ID, int x, int y, StudentWorld* sWorld)
+	: Robot(ID, x, y, THIEFBOT_HP, right, THIEFBOT_POINTS, sWorld), stolenItem(nullptr), m_currDistTraveled(0), m_distanceBeforeTurn(randInt(1, 6))
+{
+	changeFactoryCensus(true);
+}
+
+void ThiefBot::doSomething()
+{
+	if (isAlive())
+	{
+		if (canAct())
+		{
+			doActivity();
+			if (!tryToSteal())
+			{
+				robotMove();
+			}
+		}
+	}
+}
+
+bool ThiefBot::tryToSteal()
+{
+	Actor* entry = getWorld()->findEntryAtPos(getX(), getY());
+	if (entry != nullptr && entry->canBeTaken() && !(entry->isStolen()) && !isHoldingItem())
+	{
+		if (randInt(1, 10) == 1)
+		{
+			getWorld()->playSound(SOUND_ROBOT_MUNCH);
+			stolenItem = entry->steal();
+			return true;
+		}
+	}
+	return false;
+}
+
+void ThiefBot::doActivity()
+{}
+
+void ThiefBot::robotMove()
+{
+	int dx = 0;
+	int dy = 0;
+	int dir = getDirection();
+	switch (dir)
+	{
+	case right: dx++; break;
+	case left: dx--; break;
+	case up: dy++; break;
+	case down: dy--; break;
+	}
+
+
+	if (readyToTurn() || !canMove(getX() + dx, getY() + dy))
+		movementPattern();
+	else
+	{
+		moveTo(getX() + dx, getY() + dy);
+		if (isHoldingItem())
+			stolenItem->moveTo(getX() + dx, getY() + dy);
+	}
+}
+
+void ThiefBot::damage()
+{
+	Robot::damage();
+	if (!isAlive())
+	{
+		stolenItem->setVisible(true);
+		stolenItem->changeCanBeTaken(true);
+	}
+}
+
+bool ThiefBot::isHoldingItem()
+{
+	return (stolenItem != nullptr);
+}
+
+bool ThiefBot::readyToTurn()
+{
+	if (m_currDistTraveled == m_distanceBeforeTurn)
+	{
+		m_currDistTraveled = 0;
+		return true;
+	}
+	else
+	{
+		m_currDistTraveled++;
+		return false;
+	}
+}
+
+void ThiefBot::movementPattern()
+{
+	m_distanceBeforeTurn = randInt(1, 6);
+	m_currDistTraveled = 0;
+
+	/*
+	1: right
+	2: left
+	3: up
+	4: down
+	*/
+	int dir;
+	int decodedDir;
+	std::set<int>visitedDirs;
+	int dx = 0;
+	int dy = 0;
+	while (visitedDirs.size() != 4)
+	{
+		dx = 0;
+		dy = 0;
+		dir = randInt(1, 4);
+		switch (dir)
+		{
+		case 1: dx++; break;
+		case 2: dx--; break;
+		case 3: dy++; break;
+		case 4: dy--; break;
+		}
+		
+		if (visitedDirs.find(dir) != visitedDirs.end())
+			continue;
+
+		if (!canMove(getX() + dx, getY() + dy))
+		{
+			visitedDirs.insert(dir);
+		}
+		else
+		{
+			switch (dir)
+			{
+			case 1: decodedDir = right; break;
+			case 2: decodedDir = left; break;
+			case 3: decodedDir = up; break;
+			case 4: decodedDir = down; break;
+			}
+			setDirection(decodedDir);
+			break;
+		}
+	}
+}
+
+// REGULARTHIEFBOT IMMPLEMENTATIONS
+RegularThiefBot::RegularThiefBot(int x, int y, StudentWorld* sWorld)
+	: ThiefBot(IID_THIEFBOT, x, y, sWorld)
+{}
+
+void RegularThiefBot::doSomething()
+{
+	ThiefBot::doSomething();
+}
+
+// THIEFBOTFACTOR IMPLEMENTATION
+ThiefBotFactory::ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld)
+	: Actor(IID_ROBOT_FACTORY, x, y, none, UNDAMAGEABLE, sWorld), m_tbType(type)
+{}
+
+void ThiefBotFactory::doSomething()
+{
+	if (census())
+	{
+		if (randInt(1, 50) == 1) // 1/50 chance
+		{
+			switch (getType())
+			{
+			case REGULAR:
+				RegularThiefBot* nrtb = new RegularThiefBot(getX(), getY(), getWorld());
+				getWorld()->addToActors(nrtb);
+				break;
+			// ADD CASE MEAN
+			}
+		}
+	}
+}
+
+ThiefBotFactory::ProductType ThiefBotFactory::getType() const
+{
+	return m_tbType;
+}
+
+bool ThiefBotFactory::census()
+{
+	double centerX = getX();
+	double centerY = getY();
+	int numThiefBot = 0;
+	Actor* entry;
+
+	for (int dy = 3; dy >= -3; dy--)
+	{
+		for (int dx = -3; dx <= 3; dx++)
+		{
+			if (dx == 0 && dy == 0)
+			{
+				entry = getWorld()->getThiefBotAtPos(centerX, centerY);
+				if (entry != nullptr)
+					return false;
+				else
+					continue;
+			}
+			entry = getWorld()->findEntryAtPos(centerX + dx, centerY + dy);
+			if (entry != nullptr && entry->isPartOfFactoryCensus())
+			{
+				numThiefBot++;
+			}
+			if (numThiefBot >= 3)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+
+

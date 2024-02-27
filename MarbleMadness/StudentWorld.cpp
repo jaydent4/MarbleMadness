@@ -109,6 +109,12 @@ int StudentWorld::init()
                 actors.push_back(nvrb);
                 break;
             }
+            case Level::thiefbot_factory:
+            {
+                ThiefBotFactory* ntbf = new ThiefBotFactory(xcoord, ycoord, ThiefBotFactory::ProductType::REGULAR, this);
+                actors.push_back(ntbf);
+                break;
+            }
             }
         }
     }
@@ -172,6 +178,18 @@ Actor* StudentWorld::findEntryAtPos(double x, double y)
     {
         if ((*p)->getX() == x && (*p)->getY() == y)
             return (*p);
+    }
+    return nullptr;
+}
+
+Actor* StudentWorld::getThiefBotAtPos(double x, double y)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y && (*p)->isPartOfFactoryCensus())
+        {
+            return (*p);
+        }
     }
     return nullptr;
 }
