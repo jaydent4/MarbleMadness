@@ -41,7 +41,10 @@ public:
 	bool isPlayerAt(double x, double y);
 	void completeLevel();
 	void decreaseBonus();
+	bool posStopsPeas(double x, double y, Actor*& entry);
 	bool clearShotToPlayerExists(double ix, double iy, int dir);
+	bool posHasActorWithCollision(double x, double y);
+	bool posCanBeTaken(double x, double y, Actor*& collectible);
 
 private:
 	std::list<Actor*> actors;

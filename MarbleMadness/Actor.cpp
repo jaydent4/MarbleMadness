@@ -52,6 +52,41 @@ bool Actor::isPushable(int dir)
 	return false;
 }
 
+bool Actor::canMoveInDir(int dir)
+{
+	int nx = getX();
+	int ny = getY();
+
+	switch (dir)
+	{
+	case right: nx++; break;
+	case left: nx--; break;
+	case up: ny++; break;
+	case down: ny--; break;
+	}
+
+	if (getWorld()->posHasActorWithCollision(nx, ny))
+		return false;
+	return true;
+}
+
+void Actor::moveInCurrDir()
+{
+	int dir = getDirection();
+	int nx = getX();
+	int ny = getY();
+
+	switch (dir)
+	{
+	case right: nx++; break;
+	case left: nx--; break;
+	case up: ny++; break;
+	case down: ny--; break;
+	}
+
+	moveTo(nx, ny);
+}
+
 bool Actor::isAlive()
 {
 	return (getHP() > 0);
@@ -81,6 +116,7 @@ void Actor::damage()
 {
 	if (m_hp != UNDAMAGEABLE)
 		m_hp -= PEA_DAMAGE;
+	std::cout << "DAMAGE DONE ";
 }
 
 bool Actor::canBeShot()
@@ -114,6 +150,7 @@ Actor* Actor::steal()
 	{
 		stolen = true;
 		setVisible(false);
+		changeCanBeTaken(false);
 		return this;
 	}
 	return nullptr;
@@ -194,12 +231,12 @@ void Player::doSomething()
 
 bool Player::canMove(double x, double y)
 {
-	if (Actor::canMove(x, y))
+	Actor* entry = getWorld()->findEntryAtPos(x, y);
+	if (entry == nullptr)
 	{
 		return true;
 	}
 
-	Actor* entry = getWorld()->findEntryAtPos(x, y);
 	if (entry->hasCollision())
 	{
 		if (dynamic_cast<Marble*>(entry) != nullptr && entry->isPushable(getDirection()))
@@ -295,15 +332,16 @@ bool Pea::moveInDirection(Actor*& ety)
 	// check if pea goes through or stops at an entry/actor
 	moveTo(x, y);
 	// CREATE FIND DAMAGEABLE ENTRY
-	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr || (!(entry->canBeShot()) && !getWorld()->isPlayerAt(x, y)))
+	Actor* entry = nullptr;
+	if (getWorld()->posStopsPeas(x, y, entry))
 	{
-		return true;
+		ety = entry;
+		if (getWorld()->isPlayerAt(x, y))
+			ety = getWorld()->getPlayer();
+		return false;
 	}
-	ety = entry;
-	if (getWorld()->isPlayerAt(x, y))
-		ety = getWorld()->getPlayer();
-	return false;
+	return true;
+
 }
 
 // COLLECTIBLE CLASS IMPLEMENTATIONS
@@ -332,7 +370,9 @@ void Collectible::doSomething()
 // CRYSTAL IMPLEMENTATION
 Crystal::Crystal(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_CRYSTAL, x, y, CRYSTAL_POINTS, sWorld)
-{}
+{
+	changeCanBeTaken(false);
+}
 
 void Crystal::doActivity()
 {
@@ -403,76 +443,98 @@ void Exit::doSomething()
 void Exit::doActivity() // Exit does not use doActivity
 {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ROBOTS: RAGEBOT, THIEFBOT, REGULARTHIEFBOT, MEANTHIEFBOT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // ROBOT IMPLEMENTATIONS
 Robot::Robot(int ID, int x, int y, int hp, int dir, int points, StudentWorld* sWorld)
-	: Actor(ID, x, y, dir, hp, sWorld)
+	: Actor(ID, x, y, dir, hp, sWorld), canShoot(true)
 {	
 	m_currTick = 1;
 	m_points = points;
 }
 
+// Robot Actions
 void Robot::doSomething()
 {
-
+	if (isAlive()) // checks if it is alive and can act
+	{
+		if (canAct())
+		{
+			if (canShoot) // checks if robots can shoot; if it can, try to shoot
+			{
+				if (getWorld()->clearShotToPlayerExists(getX(), getY(), getDirection()))
+				{
+					getWorld()->playSound(SOUND_ENEMY_FIRE);
+					Pea* np = new Pea(static_cast<int>(getX()), static_cast<int>(getY()), getDirection(), getWorld());
+					getWorld()->addToActors(np);
+					return;
+				}
+			}
+			doActivity(); // do any other activity
+		}
+	}
 }
 
+// Determines when Robot can act
 bool Robot::canAct()
 {
 	int tickFreq = (28 - (getWorld()->getLevel())) / 4; // tick frequency
 	if (tickFreq < 3) // 3 is fastest rate
 		tickFreq = 3; 
 
-	if (m_currTick == tickFreq)
+	if (m_currTick == tickFreq) // robot is ready to act
 	{
 		m_currTick = 1;
 		return true;
 	}
-	else
+	else // robot cannot act yet
 	{
 		m_currTick++;
 		return false;
 	}
 }
 
+// In place for ThiefBot
+bool Robot::readyToTurn()
+{
+	return false;
+}
+
+// Determines the robot movement option
 void Robot::robotMove()
 {
-	int dir = getDirection();
-	double x = getX();
-	double y = getY();
-	double dx = 0;
-	double dy = 0;
-
-	switch (dir)
+	if (canMoveInDir(getDirection())) // move robot one space in the direction it is facing if there is no obstruction
 	{
-	case right: dx++; break;
-	case left: dx--; break;
-	case up: dy++; break;
-	case down: dy--; break;
+		moveInCurrDir();
 	}
-
-	Actor* entry = getWorld()->findEntryAtPos(x + dx, y + dy);
-	if (entry != nullptr && entry->hasCollision())
+	else if (!canMoveInDir(getDirection()) || readyToTurn()) // there is an obstruction, change the direction of the robot
 	{
-		movementPattern();
-	}
-	else
-	{
-		moveTo(x + dx, y + dy);
+		changeDir();
 	}
 }
 
+// Determines robot actions when damaged
 void Robot::damage()
 {
 	Actor::damage();
-	if (isAlive())
+	if (isAlive()) // play sound when damaged
 	{
 		getWorld()->playSound(SOUND_ROBOT_IMPACT);
 	}
-	else
+	else // play different sound when killed and add points to score
 	{
 		getWorld()->playSound(SOUND_ROBOT_DIE);
 		getWorld()->increaseScore(m_points);
 	}
+}
+
+// Data Member Change Functions
+
+void Robot::changecanShoot(bool s)
+{
+	canShoot = s;
 }
 
 // RAGEBOT IMPLEMENTATION
@@ -480,27 +542,21 @@ RageBot::RageBot(int x, int y, int dir, StudentWorld* sWorld)
 	: Robot(IID_RAGEBOT, x, y, RAGEBOT_HP, dir, RAGEBOT_POINTS, sWorld)
 {}
 
+// RageBot Actions
 void RageBot::doSomething()
 {
-	if (isAlive())
-	{
-		if (canAct())
-		{
-			if (getWorld()->clearShotToPlayerExists(getX(), getY(), getDirection()))
-			{
-				getWorld()->playSound(SOUND_ENEMY_FIRE);
-				Pea* np = new Pea(static_cast<int>(getX()), static_cast<int>(getY()), getDirection(), getWorld());
-				getWorld()->addToActors(np);
-			}
-			else
-			{
-				robotMove();
-			}
-		}
-	}
+	Robot::doSomething();
 }
 
-void RageBot::movementPattern()
+// RageBot Specific Action: move
+void RageBot::doActivity()
+{
+	robotMove();
+}
+
+// RageBot Movement Options
+// When RageBot hits an obstruction, change direction to the opposite direction
+void RageBot::changeDir()
 {
 	int dir = getDirection();
 	switch (dir)
@@ -512,6 +568,10 @@ void RageBot::movementPattern()
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// THIEFBOT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // THIEFBOT IMPLEMENTATION
 ThiefBot::ThiefBot(int ID, int x, int y, StudentWorld* sWorld)
 	: Robot(ID, x, y, THIEFBOT_HP, right, THIEFBOT_POINTS, sWorld), stolenItem(nullptr), m_currDistTraveled(0), m_distanceBeforeTurn(randInt(1, 6))
@@ -519,154 +579,150 @@ ThiefBot::ThiefBot(int ID, int x, int y, StudentWorld* sWorld)
 	changeFactoryCensus(true);
 }
 
+// ThiefBot Actions
 void ThiefBot::doSomething()
 {
-	if (isAlive())
+	Robot::doSomething();
+}
+
+// ThiefBot Specific Actions: try to steal, move
+void ThiefBot::doActivity()
+{
+	if (!tryToSteal()) // if cannot steal, move
 	{
-		if (canAct())
-		{
-			doActivity();
-			if (!tryToSteal())
-			{
-				robotMove();
-			}
-		}
+		robotMove();
 	}
 }
 
+// Attempt to steal the item on the thiefbot
 bool ThiefBot::tryToSteal()
 {
-	Actor* entry = getWorld()->findEntryAtPos(getX(), getY());
-	if (entry != nullptr && entry->canBeTaken() && !(entry->isStolen()) && !isHoldingItem())
+	Actor* collectible;
+	if (getWorld()->posCanBeTaken(getX(), getY(), collectible)) // gets the item from the maze
 	{
-		if (randInt(1, 10) == 1)
+		if (randInt(1, 10) == 1) // 1/10 chance
 		{
 			getWorld()->playSound(SOUND_ROBOT_MUNCH);
-			stolenItem = entry->steal();
+			stolenItem = collectible->steal(); // steals item
 			return true;
 		}
 	}
 	return false;
 }
 
-void ThiefBot::doActivity()
-{}
-
-void ThiefBot::robotMove()
+// ThiefBot Movement Option
+// When ThiefBot is blocked by an obstruction or is ready to turn, pick a new random direction
+void ThiefBot::changeDir()
 {
-	int dx = 0;
-	int dy = 0;
-	int dir = getDirection();
+	m_distanceBeforeTurn = randInt(1, 6); // determine the distance of the next direction
+	m_currDistTraveled = 0; // reset distance traveled
+
+	/*
+	DIRECTIONS FROM 1-4:
+	1: right
+	2: left
+	3: up
+	4: down
+	*/
+
+	int dir = randInt(1, 4);
+	int startingDir = dir; // saves the original starting int if ThiefBot is completely obstructed
 	switch (dir)
 	{
-	case right: dx++; break;
-	case left: dx--; break;
-	case up: dy++; break;
-	case down: dy--; break;
+	case 1: startingDir = right; break;
+	case 2: startingDir = left; break;
+	case 3: startingDir = up; break;
+	case 4: startingDir = down; break;
 	}
+	int decodedDir = -1; // direction that is manipulated
 
+	std::set<int> visitedDir; // holds directions already checked
 
-	if (readyToTurn() || !canMove(getX() + dx, getY() + dy))
-		movementPattern();
-	else
+	while (visitedDir.size() != 4) // while all directions have not been visited
 	{
-		moveTo(getX() + dx, getY() + dy);
-		if (isHoldingItem())
-			stolenItem->moveTo(getX() + dx, getY() + dy);
+		switch (dir)
+		{
+		case 1: decodedDir = right; break;
+		case 2: decodedDir = left; break;
+		case 3: decodedDir = up; break;
+		case 4: decodedDir = down; break;
+		}
+
+		if (visitedDir.find(dir) != visitedDir.end()) // direction has already been considered
+		{
+			dir = randInt(1, 4);
+		}
+		else if (!canMoveInDir(decodedDir)) // movement in direction is not possible
+		{
+			visitedDir.insert(dir); // inserts direction into set of directions
+			dir = randInt(1, 4); // choses new direction
+		}
+		else
+		{
+			setDirection(decodedDir); // found viable direction
+			return;
+		}
 	}
+	setDirection(startingDir); // if no direction is feasible, set direction to first one
 }
 
-void ThiefBot::damage()
-{
-	Robot::damage();
-	if (!isAlive())
-	{
-		stolenItem->setVisible(true);
-		stolenItem->changeCanBeTaken(true);
-	}
-}
-
-bool ThiefBot::isHoldingItem()
-{
-	return (stolenItem != nullptr);
-}
-
+// Determines whether ThiefBot can turn
 bool ThiefBot::readyToTurn()
 {
-	if (m_currDistTraveled == m_distanceBeforeTurn)
+	if (m_currDistTraveled == m_distanceBeforeTurn) // traveled distance limit
 	{
-		m_currDistTraveled = 0;
+		m_currDistTraveled = 0; // reset distance traveled
 		return true;
 	}
-	else
+	else // increemnt distance traveled
 	{
 		m_currDistTraveled++;
 		return false;
 	}
 }
 
-void ThiefBot::movementPattern()
+// ThiefBot Movement
+void ThiefBot::robotMove()
 {
-	m_distanceBeforeTurn = randInt(1, 6);
-	m_currDistTraveled = 0;
+	Robot::robotMove();
+	if (stolenItem != nullptr) // move item with it if holding an item
+		stolenItem->moveTo(getX(), getY());
+}
 
-	/*
-	1: right
-	2: left
-	3: up
-	4: down
-	*/
-	int dir;
-	int decodedDir;
-	std::set<int>visitedDirs;
-	int dx = 0;
-	int dy = 0;
-	while (visitedDirs.size() != 4)
+// Damage ThiefBot
+void ThiefBot::damage()
+{
+	Robot::damage();
+	if (!isAlive())
 	{
-		dx = 0;
-		dy = 0;
-		dir = randInt(1, 4);
-		switch (dir)
+		if (isHoldingItem()) // drop item if killed
 		{
-		case 1: dx++; break;
-		case 2: dx--; break;
-		case 3: dy++; break;
-		case 4: dy--; break;
-		}
-		
-		if (visitedDirs.find(dir) != visitedDirs.end())
-			continue;
-
-		if (!canMove(getX() + dx, getY() + dy))
-		{
-			visitedDirs.insert(dir);
-		}
-		else
-		{
-			switch (dir)
-			{
-			case 1: decodedDir = right; break;
-			case 2: decodedDir = left; break;
-			case 3: decodedDir = up; break;
-			case 4: decodedDir = down; break;
-			}
-			setDirection(decodedDir);
-			break;
+			stolenItem->setVisible(true);
+			stolenItem->changeCanBeTaken(true);
 		}
 	}
 }
 
+// Determine if ThiefBot is holding/stole an item
+bool ThiefBot::isHoldingItem()
+{
+	return (stolenItem != nullptr);
+}
+
+
 // REGULARTHIEFBOT IMMPLEMENTATIONS
 RegularThiefBot::RegularThiefBot(int x, int y, StudentWorld* sWorld)
 	: ThiefBot(IID_THIEFBOT, x, y, sWorld)
-{}
-
-void RegularThiefBot::doSomething()
 {
-	ThiefBot::doSomething();
+	changecanShoot(false);
 }
 
-// THIEFBOTFACTOR IMPLEMENTATION
+// MEAN THIEFBOT IMPLEMENTATION
+MeanThiefBot::MeanThiefBot(int x, int y, StudentWorld* sWorld)
+	: ThiefBot(IID_MEAN_THIEFBOT, x, y, sWorld)
+{}
+
+// THIEFBOTFACTORY IMPLEMENTATION
 ThiefBotFactory::ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld)
 	: Actor(IID_ROBOT_FACTORY, x, y, none, UNDAMAGEABLE, sWorld), m_tbType(type)
 {}
@@ -677,21 +733,24 @@ void ThiefBotFactory::doSomething()
 	{
 		if (randInt(1, 50) == 1) // 1/50 chance
 		{
-			switch (getType())
+			getWorld()->playSound(SOUND_ROBOT_BORN);
+			switch (m_tbType)
 			{
 			case REGULAR:
+			{
 				RegularThiefBot* nrtb = new RegularThiefBot(getX(), getY(), getWorld());
 				getWorld()->addToActors(nrtb);
 				break;
-			// ADD CASE MEAN
+			}
+			case MEAN:
+			{
+				MeanThiefBot* nmtb = new MeanThiefBot(getX(), getY(), getWorld());
+				getWorld()->addToActors(nmtb);
+				break;
+			}
 			}
 		}
 	}
-}
-
-ThiefBotFactory::ProductType ThiefBotFactory::getType() const
-{
-	return m_tbType;
 }
 
 bool ThiefBotFactory::census()
@@ -713,8 +772,7 @@ bool ThiefBotFactory::census()
 				else
 					continue;
 			}
-			entry = getWorld()->findEntryAtPos(centerX + dx, centerY + dy);
-			if (entry != nullptr && entry->isPartOfFactoryCensus())
+			if (getWorld()->getThiefBotAtPos(centerX + dx, centerY + dy) != nullptr)
 			{
 				numThiefBot++;
 			}
@@ -727,5 +785,11 @@ bool ThiefBotFactory::census()
 	return true;
 }
 
+void ThiefBotFactory::damage()
+{
+	Actor* thiefonfac = getWorld()->getThiefBotAtPos(getX(), getY());
+	if (thiefonfac != nullptr)
+		thiefonfac->damage();
+}
 
 

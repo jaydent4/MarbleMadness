@@ -98,7 +98,6 @@ int StudentWorld::init()
             }
             case Level::horiz_ragebot:
             {
-                std::cout << "CREATED HORIZ RAGEBOT";
                 RageBot* nhrb = new RageBot(xcoord, ycoord, RIGHT, this);
                 actors.push_back(nhrb);
                 break;
@@ -113,6 +112,12 @@ int StudentWorld::init()
             {
                 ThiefBotFactory* ntbf = new ThiefBotFactory(xcoord, ycoord, ThiefBotFactory::ProductType::REGULAR, this);
                 actors.push_back(ntbf);
+                break;
+            }
+            case Level::mean_thiefbot_factory:
+            {
+                ThiefBotFactory* nmtbf = new ThiefBotFactory(xcoord, ycoord, ThiefBotFactory::ProductType::MEAN, this);
+                actors.push_back(nmtbf);
                 break;
             }
             }
@@ -257,8 +262,8 @@ bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
     case DOWN: dy--; break;
     }
     
-
-    while ((findEntryAtPos(ix+dx, iy+dy) == nullptr || !findEntryAtPos(ix+dx, iy+dy)->canBeShot()) && !isPlayerAt(ix + dx, iy + dy))
+    Actor* entry;
+    while ((findEntryAtPos(ix+dx, iy+dy) == nullptr || !posStopsPeas(ix + dx, iy + dy, entry)) && !isPlayerAt(ix + dx, iy + dy))
     {
 
         switch (dir)
@@ -270,6 +275,56 @@ bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
         }
     }
     return isPlayerAt(ix + dx, iy + dy);
+}
+
+bool StudentWorld::posHasActorWithCollision(double x, double y)
+{
+    if (isPlayerAt(x, y))
+        return true;
+
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y)
+        {
+            if ((*p)->hasCollision())
+                return true;
+        }
+    }
+    return false;
+}
+
+bool StudentWorld::posStopsPeas(double x, double y, Actor*& entry)
+{
+    if (isPlayerAt(x, y))
+        return true;
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y)
+        {
+            if ((*p)->canBeShot())
+            {
+                entry = *p;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool StudentWorld::posCanBeTaken(double x, double y, Actor*& collectible)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y)
+        {
+            if ((*p)->canBeTaken())
+            {
+                collectible = *p;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void StudentWorld::setDisplayText()

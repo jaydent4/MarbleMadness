@@ -4,6 +4,7 @@
 #include "GraphObject.h"
 #include "StudentWorld.h"
 #include "level.h"
+#include <algorithm>
 
 class StudentWorld;
 
@@ -45,6 +46,8 @@ public:
 	void changeCanBeTaken(bool t);
 	bool isPartOfFactoryCensus();
 	void changeFactoryCensus(bool fc);
+	virtual bool canMoveInDir(int dir);
+	virtual void moveInCurrDir();
 
 
 	// HELPER FUNCTIONS
@@ -112,6 +115,7 @@ public:
 	enum ProductType { REGULAR, MEAN };
 	ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld);
 	void doSomething();
+	virtual void damage();
 private:
 	bool census();
 	ProductType getType() const;
@@ -168,52 +172,76 @@ private:
 	bool revealed;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ROBOT CLASSES
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// BASE CLASS
 class Robot : public Actor
 {
 public:
 	Robot(int ID, int x, int y, int hp, int dir, int points, StudentWorld* sWorld);
-	void doSomething();
-	bool canAct();
-	virtual void robotMove();
-	virtual void movementPattern() = 0;
-	virtual void damage();
+	virtual void doSomething(); // performs some action (specified by type of robot)
+	bool canAct(); // Determines when robot can act
+	virtual bool readyToTurn(); // Always true for RageBots, Determined through a function for thiefbots
+	virtual void robotMove(); // moves robot
+	virtual void damage(); // damages robot
+
+	// DATA MEMBER CHANGE FUNCTIONS
+	virtual void changecanShoot(bool s); // changes canShoot to s
+
+	// PURE VIRTUAL FUNCTIONS
+	virtual void changeDir() = 0; // direction change (specified by type of robot)
+	virtual void doActivity() = 0; // activity done by robot (specified by type of robot)
+
 private:
 	int m_currTick;
 	int m_points;
+	bool canShoot;
 };
 
+// RAGEBOT: SHOOT, MOVE
 class RageBot : public Robot
 {
 public:
 	RageBot(int x, int y, int dir, StudentWorld* sWorld);
-	virtual void doSomething();
-	virtual void movementPattern();
+	virtual void doSomething(); // shoots, moves
+	virtual void doActivity(); // moves
+	virtual void changeDir(); // changes direction to opposite direction
 };
 
+// BASE CLASS
 class ThiefBot : public Robot
 {
 public:
 	ThiefBot(int ID, int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
-	virtual void doActivity();
-	virtual void robotMove();
-	virtual void movementPattern();
-	bool isHoldingItem();
-	bool readyToTurn();
-	virtual bool tryToSteal();
-	virtual void damage();
+	virtual void doSomething(); // shoots, steals, moves
+	virtual void doActivity(); // try to steal, move
+	virtual bool tryToSteal(); // attempts to steal an item
+	virtual void changeDir(); // change direction to random direction
+	virtual bool readyToTurn(); // determines if ThiefBot is ready to turn based on how far it traveled
+	virtual void robotMove(); // moves ThiefBot, moves stolen item with it
+	virtual void damage(); // damages ThiefBot, drops stolen item
+	bool isHoldingItem(); // determine if robot is holding an item
+
 private:
 	Actor* stolenItem;
 	int m_distanceBeforeTurn;
 	int m_currDistTraveled;
 };
 
+// STEAL, MOVE,
 class RegularThiefBot : public ThiefBot
 {
 public:
 	RegularThiefBot(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+};
+
+// SHOOT, STEAL, MOVE
+class MeanThiefBot : public ThiefBot
+{
+public:
+	MeanThiefBot(int x, int y, StudentWorld* sWorld);
 };
 
 #endif // ACTOR_H_
