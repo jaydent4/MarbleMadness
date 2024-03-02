@@ -138,7 +138,10 @@ int StudentWorld::move()
 
         // checks if player/avatar is alive
         if (!(avatar->isAlive()))
+        {
+            decLives();
             return GWSTATUS_PLAYER_DIED;
+        }
 
         // check if the player completed
         if (levelCompleted)
@@ -398,6 +401,7 @@ int StudentWorld::loadCurrentLevel(Level& lev)
 
     // loads level
     Level::LoadResult resultlvl = lev.loadLevel(currlvl);
+    // Level::LoadResult resultlvl = lev.loadLevel("TEST.txt");
 
     // checks if level 
     if (resultlvl == Level::load_fail_bad_format)

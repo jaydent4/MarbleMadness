@@ -116,7 +116,6 @@ void Actor::damage()
 {
 	if (m_hp != UNDAMAGEABLE)
 		m_hp -= PEA_DAMAGE;
-	std::cout << "DAMAGE DONE ";
 }
 
 bool Actor::canBeShot()
@@ -159,6 +158,11 @@ Actor* Actor::steal()
 bool Actor::isStolen()
 {
 	return stolen;
+}
+
+void Actor::changeStolen(bool s)
+{
+	stolen = s;
 }
 
 bool Actor::isPartOfFactoryCensus()
@@ -225,6 +229,10 @@ void Player::doSomething()
 				getWorld()->addToActors(np);
 				m_peas--;
 			}
+			break;
+		case KEY_PRESS_ESCAPE:
+			changeHP(0);
+			break;
 		}
 	}
 }
@@ -237,9 +245,11 @@ bool Player::canMove(double x, double y)
 		return true;
 	}
 
-	if (entry->hasCollision())
+
+	if (getWorld()->posHasActorWithCollision(x,y))
 	{
-		if (dynamic_cast<Marble*>(entry) != nullptr && entry->isPushable(getDirection()))
+		Actor* entry = getWorld()->getMarbleAtPos(x, y);
+		if (entry != nullptr && entry->isPushable(getDirection()))
 		{
 			return true;
 		}
@@ -344,25 +354,30 @@ bool Pea::moveInDirection(Actor*& ety)
 
 }
 
-// COLLECTIBLE CLASS IMPLEMENTATIONS
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// COLLECTIBLE: CRYSTAL, EXTRALIFEGOODIE, RESTOREHEALTHGOODIE, AMMOGOODIE, EXIT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// COLLECTIBLE IMPLEMENTATIONS
 Collectible::Collectible(int ID, int x, int y, int points, StudentWorld* sWorld)
 	: Actor(ID, x, y, none, UNDAMAGEABLE, sWorld), m_points(points)
 {
-	changeCollision(false);
-	changeCanBeShot(false);
-	changeCanBeTaken(true);
+	changeCollision(false); // has no collision
+	changeCanBeShot(false); // cannot be shot
+	changeCanBeTaken(true); // can be picked up by player or thiefbot
 }
 
+// Collectible Actions
 void Collectible::doSomething()
 {
 	if (isAlive())
 	{
-		if (getWorld()->isPlayerAt(getX(), getY()) && !isStolen())
+		if (getWorld()->isPlayerAt(getX(), getY()) && !isStolen()) // checks if player is on the collectible
 		{
-			getWorld()->increaseScore(m_points);
-			getWorld()->playSound(SOUND_GOT_GOODIE);
-			doActivity();
-			changeHP(0);
+			getWorld()->increaseScore(m_points); // gives the player points
+			getWorld()->playSound(SOUND_GOT_GOODIE); // plays sound
+			doActivity(); // does action specific to the type of collectible
+			changeHP(0); // remove collectible
 		}
 	}
 }
@@ -371,12 +386,13 @@ void Collectible::doSomething()
 Crystal::Crystal(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_CRYSTAL, x, y, CRYSTAL_POINTS, sWorld)
 {
-	changeCanBeTaken(false);
+	changeCanBeTaken(false); // cannot be stolen by a thiefbot
 }
 
+// Crystal Action
 void Crystal::doActivity()
 {
-	getWorld()->decreaseNumCrystals();
+	getWorld()->decreaseNumCrystals(); // decrease the total number of crystals in the world
 }
 
 // EXTRALIFEGOODIE IMPLEMENTATION
@@ -384,9 +400,10 @@ ExtraLifeGoodie::ExtraLifeGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_EXTRA_LIFE, x, y, EXTRALIFE_POINTS, sWorld)
 {}
 
+// ExtraLifeGoodie Action
 void ExtraLifeGoodie::doActivity()
 {
-	getWorld()->incLives();
+	getWorld()->incLives(); // increase the lives of the player
 }
 
 // RESTOREHEALTHGOODIE IMPLEMENTATION
@@ -394,9 +411,10 @@ RestoreHealthGoodie::RestoreHealthGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_RESTORE_HEALTH, x, y, RESTOREHEALTH_POINTS, sWorld)
 {}
 
+// RestoreHealthGoodie Action
 void RestoreHealthGoodie::doActivity()
 {
-	getWorld()->getPlayer()->changeHP(20);
+	getWorld()->getPlayer()->changeHP(20); // set player's health back to 20
 }
 
 // AMMOGOODIE IMPLEMENTATION
@@ -404,37 +422,39 @@ AmmoGoodie::AmmoGoodie(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_AMMO, x, y, AMMO_POINTS, sWorld)
 {}
 
+// AmmoGoodie Action
 void AmmoGoodie::doActivity()
 {
-	getWorld()->getPlayer()->addPeas(20);
+	getWorld()->getPlayer()->addPeas(20); // give player 20 peas
 }
 
 // EXIT IMPLEMENTATION
 Exit::Exit(int x, int y, StudentWorld* sWorld)
 	: Collectible(IID_EXIT, x, y, FINISH_POINTS, sWorld), revealed(false)
 {
-	setVisible(false);
-	changeCanBeTaken(false);
+	setVisible(false); // not visible until all crystals are collected
+	changeCanBeTaken(false); // cannot be stolen by thief bots
 }
 
+// Exit Action
 void Exit::doSomething()
 {
 	if (isAlive())
 	{
-		if (!revealed && getWorld()->noMoreCrystals())
+		if (!revealed && getWorld()->noMoreCrystals()) // if it is not revealed and if the world has no more crystals
 		{
-			revealed = true;
-			setVisible(true);
-			getWorld()->playSound(SOUND_REVEAL_EXIT);
+			revealed = true; // reveal the crystal
+			setVisible(true); // player can now see exit
+			getWorld()->playSound(SOUND_REVEAL_EXIT); // play sound
 		}
 
-		if (revealed)
+		if (revealed) // if revealed
 		{
-			if (getWorld()->isPlayerAt(getX(), getY()))
+			if (getWorld()->isPlayerAt(getX(), getY()))  // check if the player is on the exit
 			{
-				getWorld()->increaseScore(FINISH_POINTS + getWorld()->getBonus());
-				getWorld()->playSound(SOUND_FINISHED_LEVEL);
-				getWorld()->completeLevel();
+				getWorld()->increaseScore(FINISH_POINTS + getWorld()->getBonus()); // increase the score by points (completed level points + bonus)
+				getWorld()->playSound(SOUND_FINISHED_LEVEL); // play sound
+				getWorld()->completeLevel(); // notify world that the level is complete
 			}
 		}
 	}
@@ -598,7 +618,7 @@ void ThiefBot::doActivity()
 bool ThiefBot::tryToSteal()
 {
 	Actor* collectible;
-	if (getWorld()->posCanBeTaken(getX(), getY(), collectible)) // gets the item from the maze
+	if (getWorld()->posCanBeTaken(getX(), getY(), collectible) && !collectible->isStolen()) // gets the item from the maze
 	{
 		if (randInt(1, 10) == 1) // 1/10 chance
 		{
@@ -698,7 +718,7 @@ void ThiefBot::damage()
 		if (isHoldingItem()) // drop item if killed
 		{
 			stolenItem->setVisible(true);
-			stolenItem->changeCanBeTaken(true);
+			stolenItem->changeStolen(false);
 		}
 	}
 }

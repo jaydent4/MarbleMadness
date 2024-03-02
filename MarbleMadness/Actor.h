@@ -48,6 +48,7 @@ public:
 	void changeFactoryCensus(bool fc);
 	virtual bool canMoveInDir(int dir);
 	virtual void moveInCurrDir();
+	virtual void changeStolen(bool s);
 
 
 	// HELPER FUNCTIONS
@@ -122,7 +123,11 @@ private:
 	ProductType m_tbType;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // COLLECTIBLE CLASSES
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// BASE CLASS
 class Collectible : public Actor
 {
 public:
@@ -134,6 +139,7 @@ private:
 	bool stolen;
 };
 
+// CRYSTAL: COLLECT TO COMPLETE LEVEL
 class Crystal : public Collectible
 {
 public:
@@ -141,6 +147,7 @@ public:
 	virtual void doActivity();
 };
 
+// EXTRALIFEGOODIE: INCREASES LIVES
 class ExtraLifeGoodie : public Collectible
 {
 public:
@@ -148,6 +155,7 @@ public:
 	virtual void doActivity();
 };
 
+// RESTOREHEALTHGOODIE: SETS PLAYER'S HEALTH TO 20
 class RestoreHealthGoodie : public Collectible
 {
 public:
@@ -155,6 +163,7 @@ public:
 	virtual void doActivity();
 };
 
+// AMMOGOODIE: INCREASES PLAYER'S PEAS BY 20
 class AmmoGoodie : public Collectible
 {
 public:
@@ -162,6 +171,7 @@ public:
 	virtual void doActivity();
 };
 
+// EXIT: REVEAL, COMPELETE LEVEL
 class Exit : public Collectible
 {
 public:
