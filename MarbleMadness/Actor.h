@@ -24,34 +24,34 @@ public:
 	Actor(int ID, int x, int y, int dir, int hp, StudentWorld* sWorld);
 
 	// ACTOR ACTION FUNCTIONS
-	virtual void doSomething();
-	virtual void damage();
-	Actor* steal();
-	virtual bool canMoveInDir(int dir);
-	virtual void moveInCurrDir();
-	bool isPushableInDir(int dir);
+	virtual void doSomething(); // Actor Action
+	void damage(); // damage the actor
+	Actor* steal(); // steal Actor
+	bool canMoveInDir(int dir); // Check if Actor can move in given direction
+	void moveInCurrDir(); // Move in current direction
+	bool isPushableInDir(int dir); // Check if Marble is pushable in a specified direction
 	
 
 	// IN-GAME ACCESSOR FUNCTIONS
-	int getHP() const;
-	StudentWorld* getWorld();
+	int getHP() const; // Get HP of Actor
+	StudentWorld* getWorld() const; // Get the World that Actor is in
 
 	// IN-GAME MUTATOR FUNCTIONS
-	void changeHP(int nhp);
-	virtual void changeStolen(bool s);
+	void changeHP(int nhp); // Change the HP of Actor
+	void changeStolen(bool s); // Change Actor status to stolen
 
 	// IN-GAME STATUS FUNCTIONS
-	bool isAlive();
-	bool isStolen();
+	bool isAlive(); // Check if Actor is alive
+	bool isStolen(); // Check if Actor is stolen
 
 
 	// INITIAL TYPE FUNCTIONS
-	bool hasCollision();
-	bool canBeShot();
-	bool canBeTaken();
-	bool isPartOfFactoryCensus();
-	bool isPushable();
-	bool canSwallow();
+	bool hasCollision(); // Check if Actor can be walked into
+	bool canBeShot(); // Check if peas collide with Actor
+	bool canBeTaken(); // Check if Actor can be stolen
+	bool isPartOfFactoryCensus(); // Check if Actor is part of the thief bot factory census
+	bool isPushable(); // Check if the Actor can be pushed
+	bool canSwallow(); // Check if the Actor can swallow a Marble
 
 	// INITIAL TYPE MUTATOR FUNCTIONS
 	void changeCollision(bool c);
@@ -94,14 +94,15 @@ class Player : public Actor
 {
 public:
 	Player(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
-	int getPeas() const;
-	void addPeas(int p);
+	virtual void doSomething(); // Move the player, shoot pea, end the level
+	int getPeas() const; // Get the number of peas
+	void addPeas(int p); // Add more peas
 private:
-	virtual bool canMove(double x, double y);
+	bool canMove(double x, double y); // Check if the Player can move to (x, y)
 	int m_peas;
 };
 
+// Blocks Actors
 class Wall : public Actor
 {
 public:
@@ -109,6 +110,7 @@ public:
 private:
 };
 
+// Blocks actors, can be pushed, swallowed by pits, and destroyed
 class Marble : public Actor
 {
 public:
@@ -116,33 +118,35 @@ public:
 private:
 };
 
+// Blocks actors, can be removed if swallow marble
 class Pit : public Actor
 {
 public:
 	Pit(int x, int y, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doSomething(); // Check if a marble in the same position as a pit; if it is, remove both
 private:
 };
 
+// Hits Actors and deals damage 
 class Pea : public Actor
 {
 public:
 	Pea(int x, int y, int dir, StudentWorld* sWorld);
-	virtual void doSomething();
+	virtual void doSomething(); // Continuously move in a direction
 private:
 	bool moveInDirection(Actor*& ety);
 };
 
+// Spawns new thief bots
 class ThiefBotFactory : public Actor
 {
 public:
-	enum ProductType { REGULAR, MEAN };
-	ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld);
-	void doSomething();
-	virtual void damage();
+	ThiefBotFactory(int x, int y, bool mean, StudentWorld* sWorld);
+	void doSomething(); // check census, make new thief bots if the conditions follow
+	virtual void damage(); // redirect damage to the thief bot on the factory
 private:
 	bool census();
-	ProductType m_tbType;
+	bool outputMean;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

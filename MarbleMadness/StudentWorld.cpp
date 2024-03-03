@@ -13,16 +13,19 @@ GameWorld* createStudentWorld(string assetPath)
 
 // Students:  Add code to this file, StudentWorld.h, Actor.h, and Actor.cpp
 
-// PUBLIC
+// CONSTRUCTOR
 StudentWorld::StudentWorld(std::string assetPath)
     : GameWorld(assetPath), m_bonus(1000), m_numCrystals(0)
 {}
 
+// DESTRUCTOR
 StudentWorld::~StudentWorld()
 {
     cleanUp();
 }
 
+// GAME FUNCTIONALITY FUNCTIONS
+// init(): load maze, initialize data structure, allocate avatar, allocate other actor objects
 int StudentWorld::init()
 {
     Level lev(assetPath());
@@ -110,13 +113,13 @@ int StudentWorld::init()
             }
             case Level::thiefbot_factory:
             {
-                ThiefBotFactory* ntbf = new ThiefBotFactory(xcoord, ycoord, ThiefBotFactory::ProductType::REGULAR, this);
+                ThiefBotFactory* ntbf = new ThiefBotFactory(xcoord, ycoord, false, this);
                 actors.push_back(ntbf);
                 break;
             }
             case Level::mean_thiefbot_factory:
             {
-                ThiefBotFactory* nmtbf = new ThiefBotFactory(xcoord, ycoord, ThiefBotFactory::ProductType::MEAN, this);
+                ThiefBotFactory* nmtbf = new ThiefBotFactory(xcoord, ycoord, true, this);
                 actors.push_back(nmtbf);
                 break;
             }
@@ -126,6 +129,9 @@ int StudentWorld::init()
     return GWSTATUS_CONTINUE_GAME;
 }
 
+// move(): call avatar and each actor to doSomething()
+// if avatar is dead, return specified value
+// if the level is completed, return specified value
 int StudentWorld::move()
 {
     // UPDATE GAME STATUS LINE
@@ -133,19 +139,22 @@ int StudentWorld::move()
     avatar->doSomething();
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
     {
-        // calls all actors doSomething()
-        (*p)->doSomething();
-
-        // checks if player/avatar is alive
-        if (!(avatar->isAlive()))
+        if ((*p)->isAlive())
         {
-            decLives();
-            return GWSTATUS_PLAYER_DIED;
-        }
+            // calls all actors doSomething()
+            (*p)->doSomething();
 
-        // check if the player completed
-        if (levelCompleted)
-            return GWSTATUS_FINISHED_LEVEL;
+            // checks if player/avatar is alive
+            if (!(avatar->isAlive()))
+            {
+                decLives();
+                return GWSTATUS_PLAYER_DIED;
+            }
+
+            // check if the player completed
+            if (levelCompleted)
+                return GWSTATUS_FINISHED_LEVEL;
+        }
     }
     removeDeadEntries();
 
@@ -155,10 +164,10 @@ int StudentWorld::move()
     {
         return GWSTATUS_FINISHED_LEVEL;
     }
-
     return GWSTATUS_CONTINUE_GAME;
 }
 
+// cleanUp(): deallocate avatar pointer and actor pointers, remove them from the list
 void StudentWorld::cleanUp()
 {
     // delete avatar
@@ -179,79 +188,20 @@ void StudentWorld::cleanUp()
     }
 }
 
-// HELPER FUNCTIONS
-Actor* StudentWorld::findEntryAtPos(double x, double y)
-{
-    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
-    {
-        if ((*p)->getX() == x && (*p)->getY() == y)
-            return (*p);
-    }
-    return nullptr;
-}
-
-Actor* StudentWorld::getThiefBotAtPos(double x, double y)
-{
-    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
-    {
-        if ((*p)->getX() == x && (*p)->getY() == y && (*p)->isPartOfFactoryCensus())
-        {
-            return (*p);
-        }
-    }
-    return nullptr;
-}
-
-Marble* StudentWorld::getMarbleAtPos(double x, double y)
-{
-    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
-    {
-        if ((*p)->getX() == x && (*p)->getY() == y && dynamic_cast<Marble*>(*p) != nullptr)
-        {
-            return dynamic_cast<Marble*>(*p);
-        }
-    }
-    return nullptr;
-}
-
-void StudentWorld::addToActors(Actor* na)
-{
-    actors.push_back(na);
-}
-
-Player* StudentWorld::getPlayer() const
-{
-    return avatar;
-}
-
-void StudentWorld::decreaseNumCrystals()
-{
-    m_numCrystals--;
-}
-
+// STATUS FUNCTIONS
+// Determines if there are no more crystals in the level
 bool StudentWorld::noMoreCrystals()
 {
     return (m_numCrystals <= 0);
 }
 
-int StudentWorld::getBonus() const
+// Determines if player is at (x, y)
+bool StudentWorld::isPlayerAt(double x, double y)
 {
-    return m_bonus;
+    return (avatar->getX() == x && avatar->getY() == y);
 }
 
-void StudentWorld::completeLevel()
-{
-    levelCompleted = true;
-}
-
-void StudentWorld::decreaseBonus()
-{
-    if (m_bonus != 0)
-    {
-        m_bonus--;
-    }
-}
-
+// Determines if player is in line of sight
 bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
 {
     double dx = 0;
@@ -264,9 +214,9 @@ bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
     case UP: dy++; break;
     case DOWN: dy--; break;
     }
-    
-    Actor* entry;
-    while ((findEntryAtPos(ix+dx, iy+dy) == nullptr || !posStopsPeas(ix + dx, iy + dy, entry)) && !isPlayerAt(ix + dx, iy + dy))
+
+    Actor* dummy; // irrelevant actor
+    while ((findEntryAtPos(ix + dx, iy + dy) == nullptr || !posStopsPeas(ix + dx, iy + dy, dummy)) && !isPlayerAt(ix + dx, iy + dy))
     {
 
         switch (dir)
@@ -277,25 +227,54 @@ bool StudentWorld::clearShotToPlayerExists(double ix, double iy, int dir)
         case DOWN: dy--; break;
         }
     }
-    return isPlayerAt(ix + dx, iy + dy);
+    return isPlayerAt(ix + dx, iy + dy); // check if player is at the position the line of sight stopped at
 }
 
-bool StudentWorld::posHasActorWithCollision(double x, double y)
+// ACCESSOR FUNCTIONS
+// Finds the entry at (x, y)
+Actor* StudentWorld::findEntryAtPos(double x, double y)
 {
-    if (isPlayerAt(x, y))
-        return true;
-
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
     {
         if ((*p)->getX() == x && (*p)->getY() == y)
-        {
-            if ((*p)->hasCollision())
-                return true;
-        }
+            return (*p); // does not work for cases where there are more than one Actor on a unit
     }
-    return false;
+    return nullptr;
 }
 
+// Get the ThiefBot at position (x, y)
+Actor* StudentWorld::getThiefBotAtPos(double x, double y)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y && (*p)->isPartOfFactoryCensus()) // Only thief bots are part of factory census
+        {
+            return (*p);
+        }
+    }
+    return nullptr;
+}
+
+// Gets marble at (x, y)
+Actor* StudentWorld::getMarbleAtPos(double x, double y)
+{
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y && (*p)->isPushable())
+        {
+            return (*p);
+        }
+    }
+    return nullptr;
+}
+
+// Gets avatar
+Player* StudentWorld::getPlayer() const
+{
+    return avatar;
+}
+
+// Determines whether a position will stop a pea (i.e. the position->canBeShot() == true)
 bool StudentWorld::posStopsPeas(double x, double y, Actor*& entry)
 {
     if (isPlayerAt(x, y))
@@ -314,6 +293,24 @@ bool StudentWorld::posStopsPeas(double x, double y, Actor*& entry)
     return false;
 }
 
+// Determines whether a position has an Actor with collision
+bool StudentWorld::posHasActorWithCollision(double x, double y)
+{
+    if (isPlayerAt(x, y))
+        return true;
+
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->getX() == x && (*p)->getY() == y)
+        {
+            if ((*p)->hasCollision())
+                return true;
+        }
+    }
+    return false;
+}
+
+// Determines whether the Actor (Collectible) at (x, y) can be taken, provides the collectible
 bool StudentWorld::posCanBeTaken(double x, double y, Actor*& collectible)
 {
     for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
@@ -330,6 +327,56 @@ bool StudentWorld::posCanBeTaken(double x, double y, Actor*& collectible)
     return false;
 }
 
+// Counts the number of thief bots in a 7x7 area
+int StudentWorld::countCensusInArea(double x, double y)
+{
+    int numThiefBots = 0;
+    for (list<Actor*>::iterator p = actors.begin(); p != actors.end(); p++)
+    {
+        if ((*p)->isPartOfFactoryCensus() && (*p)->getX() >= x - 3 && (*p)->getX() <= x + 3 && (*p)->getY() >= y - 3 && (*p)->getY() <= y + 3)
+            numThiefBots++;
+        if (numThiefBots >= 3)
+            break;
+    }
+    return numThiefBots;
+}
+
+// Gets bonus from world
+int StudentWorld::getBonus() const
+{
+    return m_bonus;
+}
+
+// MUTATOR FUNCTIONS
+// Add actor to actors list
+void StudentWorld::addToActors(Actor* na)
+{
+    actors.push_back(na);
+}
+
+// Decrease the number of crystals in the world
+void StudentWorld::decreaseNumCrystals()
+{
+    m_numCrystals--;
+}
+
+// Decrease the bonus by 1
+void StudentWorld::decreaseBonus()
+{
+    if (m_bonus != 0)
+    {
+        m_bonus--;
+    }
+}
+
+// Complete the level
+void StudentWorld::completeLevel()
+{
+    levelCompleted = true;
+}
+
+// HELPER FUNCTIONS
+// Display the score line text
 void StudentWorld::setDisplayText()
 {
     int score = getScore();
@@ -343,6 +390,7 @@ void StudentWorld::setDisplayText()
     setGameStatText(status);
 }
 
+// Obtains all values and converts it into a full string
 std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int ammo, int bonus)
 {
 
@@ -388,6 +436,7 @@ std::string StudentWorld::getStatus(int score, int lev, int lives, int hp, int a
     return status;
 }
 
+// loads the current level, returns specified values depending on if the file is valid, invalid, or cannot be found
 int StudentWorld::loadCurrentLevel(Level& lev)
 {
     // GETTING LEVEL
@@ -411,22 +460,13 @@ int StudentWorld::loadCurrentLevel(Level& lev)
     return 1;
 }
 
-bool StudentWorld::isEntryAlive(Actor* entry)
-{
-    return entry->isAlive();
-}
-
-bool StudentWorld::isPlayerAt(double x, double y)
-{
-    return (avatar->getX() == x && avatar->getY() == y);
-}
-
+// Finds all actors that are not alive (hp <= 0) and removing them from the list
 void StudentWorld::removeDeadEntries()
 {
     list<Actor*>::iterator p = actors.begin();
     while (p != actors.end())
     {
-        if (!isEntryAlive(*p))
+        if (!((*p)->isAlive()))
         {
             delete (*p);
             p = actors.erase(p);

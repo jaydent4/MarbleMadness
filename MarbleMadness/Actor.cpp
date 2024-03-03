@@ -108,9 +108,6 @@ bool Actor::isPushableInDir(int dir)
 	return false;
 }
 
-
-
-
 // IN-GAME ACCESSOR FUNCTIONS
 // Gets the current HP of the actor
 int Actor::getHP() const
@@ -119,13 +116,25 @@ int Actor::getHP() const
 }
 
 // Gets world
-StudentWorld* Actor::getWorld()
+StudentWorld* Actor::getWorld() const
 {
 	return m_world;
 }
 
-
 // IN-GAME MUTATOR FUNCTIONS
+// Changes the HP of the actor to nhp
+void Actor::changeHP(int nhp)
+{
+	m_hp = nhp;
+}
+
+// Changes actor to stolen (stolen by a thiefbot)
+void Actor::changeStolen(bool s)
+{
+	stolen = s;
+}
+
+// IN-GAME STATUSFUNCTIONS
 // Checks if the actor is alive
 bool Actor::isAlive()
 {
@@ -138,96 +147,78 @@ bool Actor::isStolen()
 	return stolen;
 }
 
-
-
+// INITIAL TYPE FUNCTIONS
+// Checks if the actor has collision (cannot be walked into)
 bool Actor::hasCollision()
 {
 	return collision;
 }
 
-
-
-void Actor::changeSwallow(bool s)
-{
-	swallow = s;
-}
-
-bool Actor::canSwallow()
-{
-	return swallow;
-}
-
-
-
-
-void Actor::changeHP(int nhp)
-{
-	m_hp = nhp;
-}
-
-bool Actor::canBeTaken()
-{
-	return taken;
-}
-
-void Actor::changeCanBeTaken(bool t)
-{
-	taken = t;
-}
-
-
-
+// Checks if the actor can be shot (peas stop on the actor)
 bool Actor::canBeShot()
 {
 	return shot;
 }
 
-void Actor::changeCollision(bool c)
+// Checks if object (Collectible) can be taken 
+bool Actor::canBeTaken()
 {
-	collision = c;
+	return taken;
 }
 
-void Actor::changeCanBeShot(bool s)
-{
-	shot = s;
-}
-
-
-
-
-void Actor::changeStolen(bool s)
-{
-	stolen = s;
-}
-
+// Checks if the object (ThiefBot) is part of the ThiefBotFactory census
 bool Actor::isPartOfFactoryCensus()
 {
 	return factoryCensus;
 }
 
-void Actor::changeFactoryCensus(bool fc)
-{
-	factoryCensus = fc;
-}
-
-bool Actor::canSwallow()
-{
-	return swallow;
-}
-
-void Actor::changePushable(bool p)
-{
-	pushable = p;
-}
-
+// Checks if the object (Marble) is pushable
 bool Actor::isPushable()
 {
 	return pushable;
 }
 
+// Checks if the object (Pit) can swallow a Marble
+bool Actor::canSwallow()
+{
+	return swallow;
+}
+
+// INITIAL TYPE MUTATOR FUNCTIONS
+// Changes Collision status
+void Actor::changeCollision(bool c)
+{
+	collision = c;
+}
+
+// Changes canBeShot status
+void Actor::changeCanBeShot(bool s)
+{
+	shot = s;
+}
+
+// Changes FactoryCensus status (Thiefbots)
+void Actor::changeFactoryCensus(bool fc)
+{
+	factoryCensus = fc;
+}
+
+// Changes Pushable status (Marble)
+void Actor::changePushable(bool p)
+{
+	pushable = p;
+}
+
+// Changes Swallow status (Pits)
 void Actor::changeSwallow(bool s)
 {
 	swallow = s;
+}
+
+// Changes CanBeTaken status (Thiefbots)
+void Actor::changeCanBeTaken(bool t)
+{
+	taken = t;
 }
 
 // PLAYER IMPLEMENTATIONS
@@ -235,6 +226,8 @@ Player::Player(int x, int y, StudentWorld* sWorld)
 	: Actor(IID_PLAYER, x, y, right, 20, sWorld), m_peas(20)
 {}
 
+// Player Action
+// World reads an input from the user, the Player attempts to move in that direction
 void Player::doSomething()
 {
 	if (!isAlive()) // player is dead
@@ -245,7 +238,7 @@ void Player::doSomething()
 	{
 		switch (ch)
 		{
-		case KEY_PRESS_LEFT:
+		case KEY_PRESS_LEFT: // Go in any direction
 			setDirection(left);
 			if (canMove(getX() - 1, getY()))
 			{
@@ -273,7 +266,7 @@ void Player::doSomething()
 				moveTo(getX(), getY() + 1);
 			}
 			break;
-		case KEY_PRESS_SPACE:
+		case KEY_PRESS_SPACE: // Fire Pea
 			if (m_peas > 0)
 			{
 				int dir = getDirection();
@@ -285,26 +278,24 @@ void Player::doSomething()
 				m_peas--;
 			}
 			break;
-		case KEY_PRESS_ESCAPE:
+		case KEY_PRESS_ENTER:
+			setDirection(right);
+			break;
+		case KEY_PRESS_ESCAPE: // End level
 			changeHP(0);
 			break;
 		}
 	}
 }
 
+// Player doSomething Helper Function
+// Determine if the player can move in the direction
 bool Player::canMove(double x, double y)
 {
-	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry == nullptr)
-	{
-		return true;
-	}
-
-
-	if (getWorld()->posHasActorWithCollision(x,y))
+	if (getWorld()->posHasActorWithCollision(x,y)) // pos has actor with collision
 	{
 		Actor* entry = getWorld()->getMarbleAtPos(x, y);
-		if (entry != nullptr && entry->isPushableInDir(getDirection()))
+		if (entry != nullptr && entry->isPushableInDir(getDirection())) // check if it is a marble and can be pushed in a specified direction
 		{
 			return true;
 		}
@@ -319,11 +310,13 @@ bool Player::canMove(double x, double y)
 	}
 }
 
+// Get the number of peas the Player has
 int Player::getPeas() const
 {
 	return m_peas;
 }
 
+// Give the players more peas
 void Player::addPeas(int p)
 {
 	m_peas += p;
@@ -338,21 +331,24 @@ Wall::Wall(int x, int y, StudentWorld* sWorld)
 Marble::Marble(int x, int y, StudentWorld* sWorld)
 	: Actor(IID_MARBLE, x, y, none, 10, sWorld)
 {
-	changePushable(true);
+	changePushable(true); // Marbles can be pushed
 }
 
 // PIT IMPLEMENTATIONS
 Pit::Pit(int x, int y, StudentWorld* sWorld)
 	: Actor(IID_PIT, x, y, none, UNDAMAGEABLE, sWorld)
 {
-	changeCanBeShot(false);
+	changeCanBeShot(false); // Pits cannot be shot
+	changeSwallow(true); // Pits can swallow Marbles
 }
 
+// Pit Action
+// If a marble is on top of the Pit, the marble and pit will disappear
 void Pit::doSomething()
 {
 	if (isAlive())
 	{
-		Marble* pm = getWorld()->getMarbleAtPos(getX(), getY());
+		Actor* pm = getWorld()->getMarbleAtPos(getX(), getY());
 		if (pm != nullptr)
 		{
 			changeHP(0); // changes to dead
@@ -365,22 +361,25 @@ void Pit::doSomething()
 Pea::Pea(int x, int y, int dir, StudentWorld* sWorld)
 	: Actor(IID_PEA, x, y, dir, UNDAMAGEABLE, sWorld)
 {
-	changeCanBeShot(false);
+	changeCanBeShot(false); // Peas cannot be shot
 }
 
+// Pea Action
+// Move pea in the direction it faces until it makes contact with an Actor that can be shot
 void Pea::doSomething()
 {
 	if (isAlive())
 	{
 		Actor* entry = nullptr;
-		if (!moveInDirection(entry))
+		if (!moveInDirection(entry)) // moveInDirection loops until entry that can be shot is hit
 		{
-			entry->damage();
-			changeHP(0);
+			entry->damage(); // damage the actor
+			changeHP(0); // remove pea
 		}
 	}
 }
 
+// Pea doSomething() Helper Function
 bool Pea::moveInDirection(Actor*& ety)
 {
 	// get coordinates and direction
@@ -408,7 +407,57 @@ bool Pea::moveInDirection(Actor*& ety)
 		return false;
 	}
 	return true;
+}
 
+
+// THIEFBOTFACTORY IMPLEMENTATION
+ThiefBotFactory::ThiefBotFactory(int x, int y, bool mean, StudentWorld* sWorld)
+	: Actor(IID_ROBOT_FACTORY, x, y, none, UNDAMAGEABLE, sWorld), outputMean(mean)
+{}
+
+// ThiefBotFactory Action
+// If census is true ( < 3 ThiefBots in 7x7 square), 1/50 chance to create a new thiefbot
+void ThiefBotFactory::doSomething()
+{
+	if (census())
+	{
+		if (randInt(1, 50) == 1) // 1/50 chance
+		{
+			getWorld()->playSound(SOUND_ROBOT_BORN);
+			if (!outputMean)
+			{
+				RegularThiefBot* nrtb = new RegularThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
+				getWorld()->addToActors(nrtb);
+			}
+			else
+			{
+				MeanThiefBot* nmtb = new MeanThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
+				getWorld()->addToActors(nmtb);
+			}
+		}
+	}
+}
+
+// ThiefBotFactory doSomething() Helper Function
+bool ThiefBotFactory::census()
+{
+	double centerX = getX();
+	double centerY = getY();
+	Actor* entry = getWorld()->getThiefBotAtPos(centerX, centerY); // Check if a thief bot is on the factory
+	if (entry != nullptr)
+		return false;
+
+	int numThiefBots = getWorld()->countCensusInArea(centerX, centerY); // count the number of thiefbots in the 7x7 area
+	return (numThiefBots < 3); // return false if there are 3 or more thief bots in the area
+}
+
+// ThiefBotFactory damage
+// Redirects damage to a thiefbot on top of the factory
+void ThiefBotFactory::damage()
+{
+	Actor* thiefonfac = getWorld()->getThiefBotAtPos(getX(), getY());
+	if (thiefonfac != nullptr)
+		thiefonfac->damage();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +466,7 @@ bool Pea::moveInDirection(Actor*& ety)
 
 // COLLECTIBLE IMPLEMENTATIONS
 Collectible::Collectible(int ID, int x, int y, int points, StudentWorld* sWorld)
-	: Actor(ID, x, y, none, UNDAMAGEABLE, sWorld), m_points(points)
+	: Actor(ID, x, y, none, UNDAMAGEABLE, sWorld), m_points(points), stolen(false)
 {
 	changeCollision(false); // has no collision
 	changeCanBeShot(false); // cannot be shot
@@ -774,83 +823,5 @@ MeanThiefBot::MeanThiefBot(int x, int y, StudentWorld* sWorld)
 	: ThiefBot(IID_MEAN_THIEFBOT, x, y, sWorld)
 {}
 
-// THIEFBOTFACTORY IMPLEMENTATION
-ThiefBotFactory::ThiefBotFactory(int x, int y, ProductType type, StudentWorld* sWorld)
-	: Actor(IID_ROBOT_FACTORY, x, y, none, UNDAMAGEABLE, sWorld), m_tbType(type)
-{}
-
-void ThiefBotFactory::doSomething()
-{
-	if (census())
-	{
-		if (randInt(1, 50) == 1) // 1/50 chance
-		{
-			getWorld()->playSound(SOUND_ROBOT_BORN);
-			switch (m_tbType)
-			{
-			case REGULAR:
-			{
-				RegularThiefBot* nrtb = new RegularThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
-				getWorld()->addToActors(nrtb);
-				break;
-			}
-			case MEAN:
-			{
-				MeanThiefBot* nmtb = new MeanThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
-				getWorld()->addToActors(nmtb);
-				break;
-			}
-			}
-		}
-	}
-}
-
-bool ThiefBotFactory::census()
-{
-	double centerX = getX();
-	double centerY = getY();
-	int numThiefBot = 0;
-
-	if (getWorld()->getThiefBotAtPos(centerX, centerY))
-		return false;
-	for (int idy = 1; idy <= 3; idy++)
-	{
-		if (getWorld()->getThiefBotAtPos(centerX, centerY + idy) != nullptr)
-			numThiefBot++;
-		if (getWorld()->getThiefBotAtPos(centerX, centerY - idy) != nullptr)
-			numThiefBot++;
-	}
-
-	for (int dx = 0; dx <= 3 && numThiefBot < 3; dx++)
-	{
-		for (int dy = 0; dy <= 3 && numThiefBot < 3; dy++)
-		{
-			if (getWorld()->getThiefBotAtPos(centerX + dx, centerY + dy) != nullptr)
-			{
-				numThiefBot++;
-			}
-			if (getWorld()->getThiefBotAtPos(centerX + dx, centerY - dy) != nullptr)
-			{
-				numThiefBot++;
-			}
-			if (getWorld()->getThiefBotAtPos(centerX - dx, centerY + dy) != nullptr)
-			{
-				numThiefBot++;
-			}
-			if (getWorld()->getThiefBotAtPos(centerX - dx, centerY - dy) != nullptr)
-			{
-				numThiefBot++;
-			}
-		}
-	}
-	return (numThiefBot < 3);
-}
-
-void ThiefBotFactory::damage()
-{
-	Actor* thiefonfac = getWorld()->getThiefBotAtPos(getX(), getY());
-	if (thiefonfac != nullptr)
-		thiefonfac->damage();
-}
 
 

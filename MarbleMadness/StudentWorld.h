@@ -5,16 +5,9 @@
 #include "Level.h"
 #include "Actor.h"
 #include <string>
-#include <vector>
 #include <list>
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
-
-// CONSTANTS
-static const int RIGHT = 0;
-static const int LEFT = 180;
-static const int UP = 90;
-static const int DOWN = 270;
 
 class Actor;
 class Marble;
@@ -25,26 +18,39 @@ class StudentWorld : public GameWorld
 public:
 	StudentWorld(std::string assetPath);
 	~StudentWorld();
+
+	// GAME FUNCTIONALITY FUNCTIONS
 	virtual int init();
 	virtual int move();
 	virtual void cleanUp();
 
-	// HELPER FUNCTIONS
+	// STATUS FUNCTIONS
+	bool noMoreCrystals();
+	bool isPlayerAt(double x, double y);
+	bool clearShotToPlayerExists(double ix, double iy, int dir);
+
+	// ACCESSOR FUNCTIONS
 	Actor* findEntryAtPos(double x, double y);
 	Actor* getThiefBotAtPos(double x, double y);
-	Marble* getMarbleAtPos(double x, double y);
-	void addToActors(Actor* na);
+	Actor* getMarbleAtPos(double x, double y);
 	Player* getPlayer() const;
-	void decreaseNumCrystals();
-	bool noMoreCrystals();
-	int getBonus() const;
-	bool isPlayerAt(double x, double y);
-	void completeLevel();
-	void decreaseBonus();
 	bool posStopsPeas(double x, double y, Actor*& entry);
-	bool clearShotToPlayerExists(double ix, double iy, int dir);
 	bool posHasActorWithCollision(double x, double y);
 	bool posCanBeTaken(double x, double y, Actor*& collectible);
+	int countCensusInArea(double x, double y);
+	int getBonus() const;
+
+	// MUTATOR FUNCTIONS
+	void addToActors(Actor* na);
+	void decreaseNumCrystals();
+	void decreaseBonus();
+	void completeLevel();
+
+	// CONSTANTS
+	static const int RIGHT = 0;
+	static const int LEFT = 180;
+	static const int UP = 90;
+	static const int DOWN = 270;
 
 private:
 	std::list<Actor*> actors;
@@ -57,7 +63,6 @@ private:
 	int loadCurrentLevel(Level& lev);
 	std::string getStatus(int score, int lev, int lives, int hp, int ammo, int bonus);
 	void setDisplayText();
-	bool isEntryAlive(Actor* entry);
 	void removeDeadEntries();
 };
 
