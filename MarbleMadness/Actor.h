@@ -3,7 +3,7 @@
 
 #include "GraphObject.h"
 #include "StudentWorld.h"
-#include "level.h"
+#include "Level.h"
 #include <algorithm>
 
 class StudentWorld;
@@ -72,7 +72,8 @@ public:
 	static const int RAGEBOT_HP = 10;
 	static const int RAGEBOT_POINTS = 100;
 	static const int THIEFBOT_HP = 5;
-	static const int THIEFBOT_POINTS = 10;
+	static const int REGULAR_THIEFBOT_POINTS = 10;
+	static const int MEAN_THIEFBOT_POINTS = 20;
 
 
 private:
@@ -250,7 +251,7 @@ public:
 class ThiefBot : public Robot
 {
 public:
-	ThiefBot(int ID, int x, int y, StudentWorld* sWorld);
+	ThiefBot(int ID, int x, int y, int points, StudentWorld* sWorld);
 	virtual void doSomething(); // shoots, steals, moves
 	virtual bool tryToSteal(); // attempts to steal an item
 	virtual void changeDir(); // change direction to random direction

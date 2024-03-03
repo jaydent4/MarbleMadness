@@ -699,8 +699,8 @@ void RageBot::changeDir()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // THIEFBOT IMPLEMENTATION
-ThiefBot::ThiefBot(int ID, int x, int y, StudentWorld* sWorld)
-	: Robot(ID, x, y, THIEFBOT_HP, right, THIEFBOT_POINTS, sWorld), stolenItem(nullptr), m_currDistTraveled(0), m_distanceBeforeTurn(randInt(1, 6))
+ThiefBot::ThiefBot(int ID, int x, int y, int points, StudentWorld* sWorld)
+	: Robot(ID, x, y, THIEFBOT_HP, right, points, sWorld), stolenItem(nullptr), m_currDistTraveled(0), m_distanceBeforeTurn(randInt(1, 6))
 {
 	changeFactoryCensus(true);
 }
@@ -813,15 +813,12 @@ bool ThiefBot::isHoldingItem()
 
 // REGULARTHIEFBOT IMMPLEMENTATIONS
 RegularThiefBot::RegularThiefBot(int x, int y, StudentWorld* sWorld)
-	: ThiefBot(IID_THIEFBOT, x, y, sWorld)
+	: ThiefBot(IID_THIEFBOT, x, y, REGULAR_THIEFBOT_POINTS, sWorld)
 {
 	changecanShoot(false);
 }
 
 // MEAN THIEFBOT IMPLEMENTATION
 MeanThiefBot::MeanThiefBot(int x, int y, StudentWorld* sWorld)
-	: ThiefBot(IID_MEAN_THIEFBOT, x, y, sWorld)
+	: ThiefBot(IID_MEAN_THIEFBOT, x, y, MEAN_THIEFBOT_POINTS, sWorld)
 {}
-
-
-

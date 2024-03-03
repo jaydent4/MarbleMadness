@@ -1,6 +1,5 @@
 #include "StudentWorld.h"
 #include "GameWorld.h"
-#include "Level.h"
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -32,7 +31,7 @@ int StudentWorld::init()
     int isLevelLoaded = loadCurrentLevel(lev);
     if (isLevelLoaded == -1)
         return GWSTATUS_LEVEL_ERROR;
-    if (isLevelLoaded == 0 || getLevel() == 99)
+    if (isLevelLoaded == 0 || getLevel() == 100)
         return GWSTATUS_PLAYER_WON;
 
     levelCompleted = false;
