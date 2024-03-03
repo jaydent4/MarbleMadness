@@ -3,27 +3,83 @@
 
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ACTOR: PLAYER, WALL, MARBLE, PIT, PEA, COLLECTIBLE, ROBOT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // ACTOR IMPLEMENTATIONS
 Actor::Actor(int ID, int x, int y, int dir, int hp, StudentWorld* sWorld)
-	: GraphObject(ID, x, y, dir), m_world(sWorld), collision(true), m_hp(hp), shot(true), taken(false), stolen(false), factoryCensus(false)
+	: GraphObject(ID, x, y, dir), m_world(sWorld), collision(true), m_hp(hp), shot(true), taken(false), stolen(false), factoryCensus(false), pushable(false), swallow(false)
 {
 	setVisible(true);
 }
 
-StudentWorld* Actor::getWorld()
+// ACTOR ACTION FUNCTIONS
+// Actor Action
+void Actor::doSomething() {} // base actor has no action
+
+// Damage Actor
+void Actor::damage()
 {
-	return m_world;
+	if (m_hp != UNDAMAGEABLE) // if HP is set to UNDAMAGEABLE, do not deal damage (UNDAMAGEABLE is set to 999, which no other actor has)
+		m_hp -= PEA_DAMAGE;
 }
 
-void Actor::doSomething() {}
-
-bool Actor::hasCollision()
+// Steal Actor (Collectible)
+Actor* Actor::steal()
 {
-	return collision;
+	if (canBeTaken()) // only collectible items can be stolen
+	{
+		stolen = true; // ensures that player or thief bot can take the item
+		setVisible(false);
+		return this; // return the item that is stolen
+	}
+	return nullptr; //  return nothing if the item cannot be stolen
 }
 
-bool Actor::isPushable(int dir)
+// Check if the actor can move in a direction
+bool Actor::canMoveInDir(int dir)
 {
+	double nx = getX();
+	double ny = getY();
+
+	switch (dir)
+	{
+	case right: nx++; break;
+	case left: nx--; break;
+	case up: ny++; break;
+	case down: ny--; break;
+	}
+
+	if (getWorld()->posHasActorWithCollision(nx, ny)) // actor cannot move unless the space is empty or the actor at the current space does not have collision (EXCEPTION: MARBLES)
+		return false;
+	return true;
+}
+
+// Move Actor in the current direction
+void Actor::moveInCurrDir()
+{
+	int dir = getDirection();
+	double nx = getX();
+	double ny = getY();
+
+	switch (dir)
+	{
+	case right: nx++; break;
+	case left: nx--; break;
+	case up: ny++; break;
+	case down: ny--; break;
+	}
+
+	moveTo(nx, ny);
+}
+
+// Checks if object is pushable in a direction
+bool Actor::isPushableInDir(int dir)
+{
+	if (!isPushable()) // Actor is not a marble
+		return false;
+
 	Actor* entry = nullptr;
 	double x = getX();
 	double y = getY();
@@ -42,9 +98,9 @@ bool Actor::isPushable(int dir)
 		x--;
 		break;
 	}
-	entry = getWorld()->findEntryAtPos(static_cast<int>(x), static_cast<int>(y));
+	entry = getWorld()->findEntryAtPos(static_cast<int>(x), static_cast<int>(y)); // find the entry at the position adjacent to the marble in direction dir
 
-	if (entry == nullptr || dynamic_cast<Pit*>(entry) != nullptr)
+	if (entry == nullptr || entry->canSwallow())
 	{
 		moveTo(x, y);
 		return true;
@@ -52,50 +108,57 @@ bool Actor::isPushable(int dir)
 	return false;
 }
 
-bool Actor::canMoveInDir(int dir)
+
+
+
+// IN-GAME ACCESSOR FUNCTIONS
+// Gets the current HP of the actor
+int Actor::getHP() const
 {
-	int nx = getX();
-	int ny = getY();
-
-	switch (dir)
-	{
-	case right: nx++; break;
-	case left: nx--; break;
-	case up: ny++; break;
-	case down: ny--; break;
-	}
-
-	if (getWorld()->posHasActorWithCollision(nx, ny))
-		return false;
-	return true;
+	return m_hp;
 }
 
-void Actor::moveInCurrDir()
+// Gets world
+StudentWorld* Actor::getWorld()
 {
-	int dir = getDirection();
-	int nx = getX();
-	int ny = getY();
-
-	switch (dir)
-	{
-	case right: nx++; break;
-	case left: nx--; break;
-	case up: ny++; break;
-	case down: ny--; break;
-	}
-
-	moveTo(nx, ny);
+	return m_world;
 }
 
+
+// IN-GAME MUTATOR FUNCTIONS
+// Checks if the actor is alive
 bool Actor::isAlive()
 {
 	return (getHP() > 0);
 }
 
-int Actor::getHP() const
+// Checks if actor (Collectible) is stolen by a thiefbot
+bool Actor::isStolen()
 {
-	return m_hp;
+	return stolen;
 }
+
+
+
+bool Actor::hasCollision()
+{
+	return collision;
+}
+
+
+
+void Actor::changeSwallow(bool s)
+{
+	swallow = s;
+}
+
+bool Actor::canSwallow()
+{
+	return swallow;
+}
+
+
+
 
 void Actor::changeHP(int nhp)
 {
@@ -112,11 +175,7 @@ void Actor::changeCanBeTaken(bool t)
 	taken = t;
 }
 
-void Actor::damage()
-{
-	if (m_hp != UNDAMAGEABLE)
-		m_hp -= PEA_DAMAGE;
-}
+
 
 bool Actor::canBeShot()
 {
@@ -133,32 +192,8 @@ void Actor::changeCanBeShot(bool s)
 	shot = s;
 }
 
-bool Actor::canMove(double x, double y)
-{
-	Actor* entry = getWorld()->findEntryAtPos(x, y);
-	if (entry != nullptr && entry->hasCollision() || getWorld()->isPlayerAt(x,y))
-	{
-		return false;
-	}
-	return true;
-}
 
-Actor* Actor::steal()
-{
-	if (canBeTaken())
-	{
-		stolen = true;
-		setVisible(false);
-		changeCanBeTaken(false);
-		return this;
-	}
-	return nullptr;
-}
 
-bool Actor::isStolen()
-{
-	return stolen;
-}
 
 void Actor::changeStolen(bool s)
 {
@@ -173,6 +208,26 @@ bool Actor::isPartOfFactoryCensus()
 void Actor::changeFactoryCensus(bool fc)
 {
 	factoryCensus = fc;
+}
+
+bool Actor::canSwallow()
+{
+	return swallow;
+}
+
+void Actor::changePushable(bool p)
+{
+	pushable = p;
+}
+
+bool Actor::isPushable()
+{
+	return pushable;
+}
+
+void Actor::changeSwallow(bool s)
+{
+	swallow = s;
 }
 
 // PLAYER IMPLEMENTATIONS
@@ -249,7 +304,7 @@ bool Player::canMove(double x, double y)
 	if (getWorld()->posHasActorWithCollision(x,y))
 	{
 		Actor* entry = getWorld()->getMarbleAtPos(x, y);
-		if (entry != nullptr && entry->isPushable(getDirection()))
+		if (entry != nullptr && entry->isPushableInDir(getDirection()))
 		{
 			return true;
 		}
@@ -282,7 +337,9 @@ Wall::Wall(int x, int y, StudentWorld* sWorld)
 // MARBLE IMPLEMENTATIONS
 Marble::Marble(int x, int y, StudentWorld* sWorld)
 	: Actor(IID_MARBLE, x, y, none, 10, sWorld)
-{}
+{
+	changePushable(true);
+}
 
 // PIT IMPLEMENTATIONS
 Pit::Pit(int x, int y, StudentWorld* sWorld)
@@ -637,53 +694,28 @@ void ThiefBot::changeDir()
 	m_distanceBeforeTurn = randInt(1, 6); // determine the distance of the next direction
 	m_currDistTraveled = 0; // reset distance traveled
 
-	/*
-	DIRECTIONS FROM 1-4:
-	1: right
-	2: left
-	3: up
-	4: down
-	*/
 
-	int dir = randInt(1, 4);
-	int startingDir = dir; // saves the original starting int if ThiefBot is completely obstructed
-	switch (dir)
+	int i = randInt(0, 3);
+	int startingDir = i * 90; // saves the original starting int if ThiefBot is completely obstructed
+
+	std::vector<int> unvisitedDirs = { right, up, left, down }; // holds directions already checked
+
+	while (!unvisitedDirs.empty())
 	{
-	case 1: startingDir = right; break;
-	case 2: startingDir = left; break;
-	case 3: startingDir = up; break;
-	case 4: startingDir = down; break;
-	}
-	int decodedDir = -1; // direction that is manipulated
-
-	std::set<int> visitedDir; // holds directions already checked
-
-	while (visitedDir.size() != 4) // while all directions have not been visited
-	{
-		switch (dir)
+		if (canMoveInDir(unvisitedDirs[i]))
 		{
-		case 1: decodedDir = right; break;
-		case 2: decodedDir = left; break;
-		case 3: decodedDir = up; break;
-		case 4: decodedDir = down; break;
-		}
-
-		if (visitedDir.find(dir) != visitedDir.end()) // direction has already been considered
-		{
-			dir = randInt(1, 4);
-		}
-		else if (!canMoveInDir(decodedDir)) // movement in direction is not possible
-		{
-			visitedDir.insert(dir); // inserts direction into set of directions
-			dir = randInt(1, 4); // choses new direction
+			setDirection(unvisitedDirs[i]);
+			return;
 		}
 		else
 		{
-			setDirection(decodedDir); // found viable direction
-			return;
+			unvisitedDirs.erase(std::find(unvisitedDirs.begin(), unvisitedDirs.end(), unvisitedDirs[i]));
+			i = randInt(0, unvisitedDirs.size() - 1);
 		}
 	}
-	setDirection(startingDir); // if no direction is feasible, set direction to first one
+
+	if (unvisitedDirs.empty())
+		setDirection(startingDir);
 }
 
 // Determines whether ThiefBot can turn
@@ -758,13 +790,13 @@ void ThiefBotFactory::doSomething()
 			{
 			case REGULAR:
 			{
-				RegularThiefBot* nrtb = new RegularThiefBot(getX(), getY(), getWorld());
+				RegularThiefBot* nrtb = new RegularThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
 				getWorld()->addToActors(nrtb);
 				break;
 			}
 			case MEAN:
 			{
-				MeanThiefBot* nmtb = new MeanThiefBot(getX(), getY(), getWorld());
+				MeanThiefBot* nmtb = new MeanThiefBot(static_cast<int>(getX()), static_cast<int>(getY()), getWorld());
 				getWorld()->addToActors(nmtb);
 				break;
 			}
@@ -778,31 +810,40 @@ bool ThiefBotFactory::census()
 	double centerX = getX();
 	double centerY = getY();
 	int numThiefBot = 0;
-	Actor* entry;
 
-	for (int dy = 3; dy >= -3; dy--)
+	if (getWorld()->getThiefBotAtPos(centerX, centerY))
+		return false;
+	for (int idy = 1; idy <= 3; idy++)
 	{
-		for (int dx = -3; dx <= 3; dx++)
+		if (getWorld()->getThiefBotAtPos(centerX, centerY + idy) != nullptr)
+			numThiefBot++;
+		if (getWorld()->getThiefBotAtPos(centerX, centerY - idy) != nullptr)
+			numThiefBot++;
+	}
+
+	for (int dx = 0; dx <= 3 && numThiefBot < 3; dx++)
+	{
+		for (int dy = 0; dy <= 3 && numThiefBot < 3; dy++)
 		{
-			if (dx == 0 && dy == 0)
-			{
-				entry = getWorld()->getThiefBotAtPos(centerX, centerY);
-				if (entry != nullptr)
-					return false;
-				else
-					continue;
-			}
 			if (getWorld()->getThiefBotAtPos(centerX + dx, centerY + dy) != nullptr)
 			{
 				numThiefBot++;
 			}
-			if (numThiefBot >= 3)
+			if (getWorld()->getThiefBotAtPos(centerX + dx, centerY - dy) != nullptr)
 			{
-				return false;
+				numThiefBot++;
+			}
+			if (getWorld()->getThiefBotAtPos(centerX - dx, centerY + dy) != nullptr)
+			{
+				numThiefBot++;
+			}
+			if (getWorld()->getThiefBotAtPos(centerX - dx, centerY - dy) != nullptr)
+			{
+				numThiefBot++;
 			}
 		}
 	}
-	return true;
+	return (numThiefBot < 3);
 }
 
 void ThiefBotFactory::damage()

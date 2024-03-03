@@ -11,49 +11,70 @@ class StudentWorld;
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
 // CONSTANTS
-const int UNDAMAGEABLE = 999;
-const int PEA_DAMAGE = 2;
-const int CRYSTAL_POINTS = 50;
-const int EXTRALIFE_POINTS = 1000;
-const int RESTOREHEALTH_POINTS = 500;
-const int AMMO_POINTS = 100;
-const int FINISH_POINTS = 2000;
 
-const int RAGEBOT_HP = 10;
-const int RAGEBOT_POINTS = 100;
-const int THIEFBOT_HP = 5;
-const int THIEFBOT_POINTS = 10;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ACTOR CLASSES
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // BASE CLASS
 class Actor : public GraphObject
 {
 public:
 	Actor(int ID, int x, int y, int dir, int hp, StudentWorld* sWorld);
-	StudentWorld* getWorld();
+
+	// ACTOR ACTION FUNCTIONS
 	virtual void doSomething();
-	bool hasCollision();
-	bool isPushable(int dir);
-	bool isAlive();
-	bool canBeShot();
-	int getHP() const;
-	void changeHP(int nhp);
 	virtual void damage();
-	virtual bool canMove(double x, double y);
-	virtual bool canBeTaken();
 	Actor* steal();
-	virtual bool isStolen();
-	void changeCanBeTaken(bool t);
-	bool isPartOfFactoryCensus();
-	void changeFactoryCensus(bool fc);
 	virtual bool canMoveInDir(int dir);
 	virtual void moveInCurrDir();
+	bool isPushableInDir(int dir);
+	
+
+	// IN-GAME ACCESSOR FUNCTIONS
+	int getHP() const;
+	StudentWorld* getWorld();
+
+	// IN-GAME MUTATOR FUNCTIONS
+	void changeHP(int nhp);
 	virtual void changeStolen(bool s);
 
+	// IN-GAME STATUS FUNCTIONS
+	bool isAlive();
+	bool isStolen();
 
-	// HELPER FUNCTIONS
+
+	// INITIAL TYPE FUNCTIONS
+	bool hasCollision();
+	bool canBeShot();
+	bool canBeTaken();
+	bool isPartOfFactoryCensus();
+	bool isPushable();
+	bool canSwallow();
+
+	// INITIAL TYPE MUTATOR FUNCTIONS
 	void changeCollision(bool c);
 	void changeCanBeShot(bool s);
+	void changeFactoryCensus(bool fc);
+	void changePushable(bool p);
+	void changeSwallow(bool s);
+	void changeCanBeTaken(bool t);
+	
+	// ACTOR CONSTANTS
+	static const int UNDAMAGEABLE = 999;
+	static const int PEA_DAMAGE = 2;
+	static const int CRYSTAL_POINTS = 50;
+	static const int EXTRALIFE_POINTS = 1000;
+	static const int RESTOREHEALTH_POINTS = 500;
+	static const int AMMO_POINTS = 100;
+	static const int FINISH_POINTS = 2000;
+	static const int RAGEBOT_HP = 10;
+	static const int RAGEBOT_POINTS = 100;
+	static const int THIEFBOT_HP = 5;
+	static const int THIEFBOT_POINTS = 10;
+
+
 private:
 	StudentWorld* m_world;
 	bool collision;
@@ -61,6 +82,8 @@ private:
 	bool taken;
 	bool stolen;
 	bool factoryCensus;
+	bool pushable;
+	bool swallow;
 	int m_hp;
 };
 
@@ -119,7 +142,6 @@ public:
 	virtual void damage();
 private:
 	bool census();
-	ProductType getType() const;
 	ProductType m_tbType;
 };
 
@@ -216,8 +238,8 @@ class RageBot : public Robot
 public:
 	RageBot(int x, int y, int dir, StudentWorld* sWorld);
 	virtual void doSomething(); // shoots, moves
-	virtual void doActivity(); // moves
 	virtual void changeDir(); // changes direction to opposite direction
+	virtual void doActivity(); // moves
 };
 
 // BASE CLASS
@@ -226,7 +248,6 @@ class ThiefBot : public Robot
 public:
 	ThiefBot(int ID, int x, int y, StudentWorld* sWorld);
 	virtual void doSomething(); // shoots, steals, moves
-	virtual void doActivity(); // try to steal, move
 	virtual bool tryToSteal(); // attempts to steal an item
 	virtual void changeDir(); // change direction to random direction
 	virtual bool readyToTurn(); // determines if ThiefBot is ready to turn based on how far it traveled
@@ -235,6 +256,7 @@ public:
 	bool isHoldingItem(); // determine if robot is holding an item
 
 private:
+	virtual void doActivity(); // try to steal, move
 	Actor* stolenItem;
 	int m_distanceBeforeTurn;
 	int m_currDistTraveled;
